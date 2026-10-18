@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',
     
     # Stylora domain apps
     'apps.accounts',
@@ -98,19 +99,35 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
-# WhiteNoise Production Static File Storage
+
+# Storage Configuration
 STORAGES = {
     'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'BACKEND': 'storages.backends.s3.S3Storage',
     },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
     },
 }
 
-# User Uploaded Media Files
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# Neon S3-Compatible Object Storage
+AWS_S3_ENDPOINT_URL = env(
+    'AWS_ENDPOINT_URL_S3',
+    default='',
+)
+AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', default='')
+AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', default='')
+AWS_S3_REGION_NAME = env('AWS_REGION', default='ap-southeast-1')
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_S3_ADDRESSING_STYLE = 'path'
+
+# Keep uploaded files private and generate signed URLs
+AWS_QUERYSTRING_AUTH = True
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_EXPIRE = 3600
+AWS_S3_FILE_OVERWRITE = False
+
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
