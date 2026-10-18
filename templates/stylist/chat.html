@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Stylist — Stylora{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem;">
+    <div>
+      <h1 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+        AI Personal Stylist
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.95rem;">
+        Personalized outfit recommendations built <strong>only from your {{ wardrobe_count }} closet items</strong>.
+      </p>
+    </div>
+    <span class="brand-badge" style="background: var(--tint-mint-pastel); color: var(--feedback-success-text);">
+      Active Session
+    </span>
+  </div>
+
+  {% if needs_more_items %}
+  <div class="alert alert-error" style="margin-bottom: 1.5rem;">
+    <div>
+      <strong>Closet Notice:</strong> You currently have {{ wardrobe_count }} item(s) logged. Stylora needs at least 3 items (e.g. a top, a bottom, and shoes) to coordinate complete outfits.
+    </div>
+    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary" style="margin-left: 1rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; min-height: 36px; white-space: nowrap;">
+      + Add Clothes
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Chat Stream Container -->
+  <div class="card" style="padding: 1.25rem; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
+    <div id="chat-messages" style="display: flex; flex-direction: column; gap: 1.25rem; overflow-y: auto; max-height: 540px; padding-right: 0.5rem; margin-bottom: 1.25rem;">
+      <!-- Stylora Welcome Greeting -->
+      <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+        <div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">
+          ✨
+        </div>
+        <div style="background: var(--bg-canvas); border: 1px solid var(--border-subtle); padding: 1rem 1.25rem; border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md); max-width: 85%;">
+          <p style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.5; margin-bottom: 0.5rem;">
+            Hello {{ user.username }}! I'm your Stylora AI stylist. Tell me about your occasion, mood, weather, or any specific item you feel like wearing today.
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            I will look through your {{ wardrobe_count }} clothes and coordinate a look using only items you actually own.
+          </p>
+        </div>
+      </div>
+
+      <!-- Render Historical Messages in this Session -->
+      {% for msg in messages_history %}
+        {% if msg.sender == 'user' %}
+        <div style="display: flex; justify-content: flex-end;">
+          <div style="background: var(--primary-600); color: #fff; padding: 0.85rem 1.15rem; border-radius: var(--radius-md) var(--radius-md) 0 var(--radius-md); max-width: 80%; font-size: 0.95rem; line-height: 1.4;">
+            {{ msg.message_text }}
+          </div>
+        </div>
+        {% else %}
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+          <div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">
+            ✨
+          </div>
+          <div style="max-width: 88%; width: 100%;">
+            {% if msg.raw_response and msg.raw_response.items %}
+              {% with outfit=msg.raw_response %}
+                {% include 'components/outfit_card.html' with outfit=outfit %}
+              {% endwith %}
+            {% else %}
+              <div style="background: var(--bg-canvas); border: 1px solid var(--border-subtle); padding: 1rem 1.25rem; border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);">
+                <p style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.5;">
+                  {{ msg.message_text }}
+                </p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Live Loading Shimmer Placeholder -->
+    <div id="shimmer-loader" style="display: none; margin-bottom: 1.25rem;">
+      <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+        <div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--tint-blue-pastel); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">
+          ✨
+        </div>
+        <div class="card" style="flex: 1; padding: 1rem; background: var(--bg-canvas); border: 1px dashed var(--border-focus);">
+          <p style="font-size: 0.9rem; font-weight: 600; color: var(--primary-600); margin-bottom: 0.5rem;">
+            Stylora is reviewing your closet inventory for matching pieces...
+          </p>
+          <div style="height: 14px; background: var(--border-subtle); border-radius: 4px; width: 75%; margin-bottom: 0.5rem; animation: pulse 1.5s infinite;"></div>
+          <div style="height: 14px; background: var(--border-subtle); border-radius: 4px; width: 50%; animation: pulse 1.5s infinite;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Presets -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+      <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); align-self: center;">Try asking:</span>
+      <button type="button" class="btn btn-subtle preset-btn" style="padding: 0.25rem 0.65rem; font-size: 0.8rem; min-height: 32px; background: var(--tint-blue-pastel); color: var(--primary-600); border-radius: var(--radius-full);">
+        College class presentation
+      </button>
+      <button type="button" class="btn btn-subtle preset-btn" style="padding: 0.25rem 0.65rem; font-size: 0.8rem; min-height: 32px; background: var(--tint-blue-pastel); color: var(--primary-600); border-radius: var(--radius-full);">
+        Casual evening party with friends
+      </button>
+      <button type="button" class="btn btn-subtle preset-btn" style="padding: 0.25rem 0.65rem; font-size: 0.8rem; min-height: 32px; background: var(--tint-blue-pastel); color: var(--primary-600); border-radius: var(--radius-full);">
+        Comfortable rainy day outfit
+      </button>
+    </div>
+
+    <!-- Input Bar -->
+    <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+      {% csrf_token %}
+      <div style="flex: 1;">
+        <textarea id="prompt-input" class="form-control" rows="2" placeholder="Describe your occasion or outfit preference (e.g. 'Styling ideas with my denim jacket for a breezy evening')..." style="resize: none;" {% if needs_more_items %}disabled{% endif %}></textarea>
+      </div>
+      <button type="submit" id="send-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; min-height: 58px;" {% if needs_more_items %}disabled{% endif %}>
+        Style Me
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.85; }
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var chatForm = document.getElementById('chat-form');
+    var promptInput = document.getElementById('prompt-input');
+    var sendBtn = document.getElementById('send-btn');
+    var messagesContainer = document.getElementById('chat-messages');
+    var shimmer = document.getElementById('shimmer-loader');
+    var presetBtns = document.querySelectorAll('.preset-btn');
+
+    function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    scrollToBottom();
+
+    presetBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!promptInput.disabled) {
+          promptInput.value = btn.innerText.trim();
+          promptInput.focus();
+        }
+      });
+    });
+
+    if (chatForm) {
+      chatForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var promptText = promptInput.value.trim();
+        if (!promptText) return;
+
+        // 1. Render User Message immediately in DOM
+        var userBubble = document.createElement('div');
+        userBubble.style.display = 'flex';
+        userBubble.style.justifyContent = 'flex-end';
+        userBubble.innerHTML = '<div style="background: var(--primary-600); color: #fff; padding: 0.85rem 1.15rem; border-radius: var(--radius-md) var(--radius-md) 0 var(--radius-md); max-width: 80%; font-size: 0.95rem; line-height: 1.4;">' +
+                               escapeHtml(promptText) + '</div>';
+        messagesContainer.appendChild(userBubble);
+        scrollToBottom();
+
+        promptInput.value = '';
+        promptInput.disabled = true;
+        sendBtn.disabled = true;
+        shimmer.style.display = 'block';
+        scrollToBottom();
+
+        var formData = new FormData();
+        formData.append('prompt', promptText);
+
+        fetch("{% url 'stylist:send-message' %}", {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          shimmer.style.display = 'none';
+          promptInput.disabled = false;
+          sendBtn.disabled = false;
+          promptInput.focus();
+
+          if (data.success && data.outfit) {
+            renderOutfitResponse(data.outfit);
+          } else {
+            renderAssistantError(data.error || "Stylora couldn't generate an outfit. Please try rephrasing.");
+          }
+          scrollToBottom();
+        })
+        .catch(function(err) {
+          shimmer.style.display = 'none';
+          promptInput.disabled = false;
+          sendBtn.disabled = false;
+          renderAssistantError("Network error. Please try styling again in a moment.");
+          scrollToBottom();
+        });
+      });
+    }
+
+    function renderOutfitResponse(outfit) {
+      var wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.gap = '0.75rem';
+      wrapper.style.alignItems = 'flex-start';
+
+      var itemsHtml = '';
+      outfit.items.forEach(function(item) {
+        itemsHtml += '<div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center;">' +
+                     '  <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--bg-surface-muted); position: relative; overflow: hidden;">' +
+                     '    <img src="' + item.thumbnail_url + '" alt="' + escapeHtml(item.name) + '" style="width: 100%; height: 100%; object-fit: cover;">' +
+                     '    <span style="position: absolute; bottom: 0.35rem; left: 0.35rem; font-size: 0.65rem; font-weight: 700; background: rgba(15, 23, 42, 0.75); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px;">' + item.slot + '</span>' +
+                     '  </div>' +
+                     '  <div style="padding: 0.4rem 0.5rem;">' +
+                     '    <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;">' + escapeHtml(item.name) + '</p>' +
+                     '    <p style="font-size: 0.75rem; color: var(--text-muted);">' + escapeHtml(item.primary_color) + '</p>' +
+                     '  </div>' +
+                     '</div>';
+      });
+
+      var missingHtml = '';
+      if (outfit.missing_elements_advice) {
+        missingHtml = '<div style="background: var(--tint-sand-pastel); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.825rem; color: #78350F; line-height: 1.4; margin-top: 0.75rem;">' +
+                      '  <strong>Stylist note:</strong> ' + escapeHtml(outfit.missing_elements_advice) +
+                      '</div>';
+      }
+
+      wrapper.innerHTML = '<div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">✨</div>' +
+                          '<div style="max-width: 88%; width: 100%;">' +
+                          '  <div class="card outfit-card" style="background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-canvas) 100%); border: 1px solid var(--border-subtle); padding: 1.25rem;">' +
+                          '    <span class="brand-badge" style="font-size: 0.75rem;">Recommended Outfit</span>' +
+                          '    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem; margin-bottom: 0.75rem;">' + escapeHtml(outfit.outfit_title) + '</h3>' +
+                          '    <div class="outfit-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">' +
+                          itemsHtml +
+                          '    </div>' +
+                          '    <div style="background: var(--bg-surface); border-left: 3px solid var(--primary-500); padding: 0.85rem 1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">' +
+                          '      <p style="font-size: 0.85rem; font-weight: 700; color: var(--primary-600); margin-bottom: 0.25rem;">💡 Why this outfit works:</p>' +
+                          '      <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">' + escapeHtml(outfit.styling_explanation) + '</p>' +
+                          '    </div>' +
+                          missingHtml +
+                          '  </div>' +
+                          '</div>';
+
+      messagesContainer.appendChild(wrapper);
+    }
+
+    function renderAssistantError(errorMsg) {
+      var wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.gap = '0.75rem';
+      wrapper.style.alignItems = 'flex-start';
+      wrapper.innerHTML = '<div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">✨</div>' +
+                          '<div style="max-width: 85%;">' +
+                          '  <div class="alert alert-error">' +
+                          '    <span>' + escapeHtml(errorMsg) + '</span>' +
+                          '  </div>' +
+                          '</div>';
+      messagesContainer.appendChild(wrapper);
+    }
+
+    function escapeHtml(text) {
+      var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+  });
+</script>
+{% endblock %}

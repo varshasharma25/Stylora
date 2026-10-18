@@ -16,7 +16,7 @@
             <a href="{% url 'wardrobe:gallery' %}" class="nav-link {% if 'wardrobe' in request.path %}active{% endif %}">Wardrobe</a>
           </li>
           <li>
-            <a href="{% url 'accounts:dashboard' %}#stylist" class="nav-link">AI Stylist</a>
+            <a href="{% url 'stylist:chat' %}" class="nav-link {% if 'stylist' in request.path %}active{% endif %}">AI Stylist</a>
           </li>
           <li>
             <a href="{% url 'accounts:dashboard' %}#outfits" class="nav-link">Saved Looks</a>
@@ -58,7 +58,7 @@
       </a>
     </li>
     <li class="mobile-nav-item">
-      <a href="{% url 'accounts:dashboard' %}#stylist" class="mobile-nav-link">
+      <a href="{% url 'stylist:chat' %}" class="mobile-nav-link {% if 'stylist' in request.path %}active{% endif %}">
         <span class="mobile-nav-icon">✨</span>
         <span>Stylist</span>
       </a>

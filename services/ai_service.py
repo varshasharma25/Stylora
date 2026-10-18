@@ -30,6 +30,26 @@ class ClothingMetadataSuggestion(BaseModel):
     )
 
 
+class RecommendedItemRef(BaseModel):
+    item_id: int = Field(description="Database integer ID of the clothing item chosen from provided inventory")
+    slot: str = Field(description="Role in outfit: 'top', 'bottom', 'shoes', 'outerwear', 'accessory', or 'dress'")
+    item_name: str = Field(description="Name of the item as provided in context")
+
+
+class OutfitResponseSchema(BaseModel):
+    outfit_title: str = Field(description="Creative 2-5 word name for the look, e.g., 'Casual Fest Layered'")
+    styling_explanation: str = Field(
+        description="Clear, human-friendly explanation of why these pieces, colors, and textures coordinate well"
+    )
+    items: list[RecommendedItemRef] = Field(
+        description="List of selected items strictly chosen from the provided inventory"
+    )
+    missing_elements_advice: Optional[str] = Field(
+        default=None,
+        description="Helpful styling note if the closet lacked a key piece, e.g., 'A light neutral scarf would complete this look'"
+    )
+
+
 class AIServiceError(Exception):
     """Custom exception raised when an AI generation or validation step fails."""
     pass
@@ -124,3 +144,85 @@ class AIService:
             # Catch timeouts, rate limits, or network failures cleanly without exposing keys/tracebacks to user
             logger.error("AI service error during image analysis: %s", str(e), exc_info=True)
             raise AIServiceError("AI auto-detection is temporarily unavailable. Please enter details manually.") from e
+
+    @classmethod
+    def generate_wardrobe_outfit(
+        cls,
+        user_prompt: str,
+        inventory: list[dict],
+        required_items: Optional[list[str]] = None,
+        excluded_items: Optional[list[str]] = None,
+        chat_history: Optional[list[dict]] = None
+    ) -> OutfitResponseSchema:
+        """
+        Coordinates a personalized outfit using exclusively the user's owned inventory.
+        Enforces structured output matching OutfitResponseSchema.
+        """
+        if not inventory:
+            raise AIServiceError("Your wardrobe is empty. Please upload clothes before generating an outfit.")
+
+        api_key = cls.get_api_key()
+        if not api_key:
+            logger.warning("AI styling requested but GEMINI_API_KEY is not configured.")
+            raise AIServiceError("AI styling service is not configured. Please contact support or set GEMINI_API_KEY.")
+
+        try:
+            from google import genai
+            from google.genai import types
+            import json
+
+            client = genai.Client(api_key=api_key)
+
+            # Build compact JSON representation of owned inventory
+            inventory_summary = json.dumps(inventory, indent=2)
+
+            # Build prompt with strict grounding constraints
+            constraints = []
+            if required_items:
+                constraints.append(f"Must include these items if possible: {', '.join(required_items)}")
+            if excluded_items:
+                constraints.append(f"Exclude these items or colors: {', '.join(excluded_items)}")
+            
+            constraints_text = "\n".join(constraints) if constraints else "No special inclusions/exclusions specified."
+
+            system_instruction = (
+                "You are Stylora, an expert personal fashion stylist. "
+                "CRITICAL GROUNDING RULE: You may ONLY recommend clothing items from the user's provided inventory. "
+                "NEVER invent items, reference external stores, or hallucinate item IDs. "
+                "Every single item in your recommendation MUST have an 'item_id' that exists in the provided inventory list. "
+                "Construct a stylish, cohesive combination matching the user's occasion, weather, or aesthetic. "
+                "Provide a creative title and a clear, friendly explanation of why these colors, patterns, and silhouettes work together."
+            )
+
+            prompt_content = (
+                f"{system_instruction}\n\n"
+                f"USER'S OWNED INVENTORY (Only choose from these items):\n{inventory_summary}\n\n"
+                f"SPECIAL CONSTRAINTS:\n{constraints_text}\n\n"
+                f"USER STYLING REQUEST:\n\"{user_prompt}\"\n\n"
+                "Return your recommendation as a JSON object adhering to the schema."
+            )
+
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt_content,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=OutfitResponseSchema.model_json_schema(),
+                    temperature=0.3,
+                ),
+            )
+
+            if not response.text:
+                raise AIServiceError("Empty response received from stylist model.")
+
+            # Validate against Pydantic schema
+            outfit_data = OutfitResponseSchema.model_validate_json(response.text)
+            logger.info("Outfit generated: '%s' with %d items", outfit_data.outfit_title, len(outfit_data.items))
+            return outfit_data
+
+        except ValidationError as e:
+            logger.warning("AI generated outfit failed schema validation: %s", str(e))
+            raise AIServiceError("Stylora received an unreadable outfit recommendation. Please try rephrasing.") from e
+        except Exception as e:
+            logger.error("AI service error during outfit generation: %s", str(e), exc_info=True)
+            raise AIServiceError("Stylora is experiencing heavy demand or connectivity issues. Please try again.") from e
