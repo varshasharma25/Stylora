@@ -6,4 +6,4 @@ pydantic>=2.0
 gunicorn>=21.2
 whitenoise>=6.6
 psycopg2-binary>=2.9
-
+django-storages[s3]>=1.14.6
