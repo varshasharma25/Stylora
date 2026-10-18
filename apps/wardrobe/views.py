@@ -152,6 +152,13 @@ class ClothingMetadataSuggestView(LoginRequiredMixin, View):
     """
 
     def post(self, request, *args, **kwargs):
+        from services.security_service import RateLimiter
+        if RateLimiter.is_rate_limited(identifier=str(request.user.id), action='suggest_metadata', max_requests=20, window_seconds=60):
+            return JsonResponse({
+                'success': False,
+                'error': 'Too many upload analysis requests. Please wait a minute before analyzing more photos.'
+            }, status=429)
+
         uploaded_image = request.FILES.get('image')
         if not uploaded_image:
             return JsonResponse({

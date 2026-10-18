@@ -78,10 +78,11 @@ class ClothingItemForm(forms.ModelForm):
         raw_image = self.cleaned_data.get('original_image')
         # Process and generate thumbnail if a fresh file was uploaded
         if raw_image and hasattr(raw_image, 'size') and hasattr(raw_image, 'read'):
+            import uuid
             clean_original, thumb = ImageProcessingService.validate_and_process_upload(raw_image)
-            base_filename = raw_image.name.rsplit('.', 1)[0]
-            instance.original_image.save(f"{base_filename}_clean.jpg", clean_original, save=False)
-            instance.thumbnail_image.save(f"{base_filename}_thumb.jpg", thumb, save=False)
+            file_uuid = uuid.uuid4().hex
+            instance.original_image.save(f"{file_uuid}_clean.jpg", clean_original, save=False)
+            instance.thumbnail_image.save(f"{file_uuid}_thumb.jpg", thumb, save=False)
 
         if commit:
             instance.save()

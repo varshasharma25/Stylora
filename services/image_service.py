@@ -8,6 +8,9 @@ MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 ALLOWED_IMAGE_FORMATS = {'JPEG', 'PNG', 'WEBP'}
 THUMBNAIL_MAX_DIMENSION = 400
 
+# Security limit: Prevent Decompression Bomb DOS attacks (max 25 Megapixels, approx 5000x5000)
+Image.MAX_IMAGE_PIXELS = 25_000_000
+
 
 class ImageProcessingService:
     """
@@ -37,6 +40,8 @@ class ImageProcessingService:
             
             # Re-open after verify() (Pillow requirement)
             img = Image.open(io.BytesIO(image_data))
+        except Image.DecompressionBombError as e:
+            raise ValidationError("The uploaded image resolution is excessively large (decompression risk). Please resize and retry.") from e
         except (UnidentifiedImageError, ValueError, OSError) as e:
             raise ValidationError("The uploaded file is not a valid or readable image.") from e
 

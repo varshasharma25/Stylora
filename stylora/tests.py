@@ -280,3 +280,63 @@ class StyloraTemplateAccessibilityAndResponsivenessTests(TestCase):
                 self.assertContains(resp, 'aria-label="Mobile Bottom Navigation"')
                 # Verify viewport meta tag for responsive scaling
                 self.assertContains(resp, '<meta name="viewport" content="width=device-width, initial-scale=1.0">')
+
+
+class StyloraSecurityHardeningTests(TestCase):
+    """
+    Security verification tests for abuse controls, path traversal prevention,
+    and denial-of-service resilience.
+    """
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = Client()
+        self.user = User.objects.create_user(username='sec_user', email='sec@test.com', password='Password123!')
+        self.client.login(username='sec_user', password='Password123!')
+
+    def test_rate_limiter_blocks_abusive_requests(self):
+        """RateLimiter correctly throttles bursts exceeding max_requests threshold."""
+        from services.security_service import RateLimiter
+        # Simulate 20 allowed requests
+        for _ in range(20):
+            self.assertFalse(RateLimiter.is_rate_limited('test_user', 'test_action', max_requests=20, window_seconds=60))
+        # 21st request must be rate-limited
+        self.assertTrue(RateLimiter.is_rate_limited('test_user', 'test_action', max_requests=20, window_seconds=60))
+
+    def test_uploaded_file_uses_uuid_and_prevents_path_traversal(self):
+        """Malicious filenames like '../../hack.jpg' are strictly sanitized to UUIDs."""
+        import re
+        cat = Category.objects.get(slug='tops')
+        malicious_file = create_test_image()
+        malicious_file.name = "../../../etc/passwd_exploit.png"
+
+        resp = self.client.post(reverse('wardrobe:item-create'), {
+            'name': 'Path Traversal Test Item',
+            'category': cat.id,
+            'primary_color': 'Black',
+            'pattern': 'solid',
+            'season': 'all',
+            'original_image': malicious_file,
+        })
+        self.assertEqual(resp.status_code, 302)
+
+        item = ClothingItem.objects.get(name='Path Traversal Test Item')
+        # Filename on disk must be a 32-character hex UUID followed by _clean.jpg
+        orig_filename = item.original_image.name.rsplit('/', 1)[-1]
+        self.assertNotIn('passwd', orig_filename)
+        self.assertNotIn('..', orig_filename)
+        self.assertTrue(re.match(r'^[0-9a-f]{32}_clean\.jpg$', orig_filename), f"Filename '{orig_filename}' is not a UUID")
+
+    def test_decompression_bomb_rejected(self):
+        """Images triggering DecompressionBombError are caught and rejected cleanly."""
+        from services.image_service import ImageProcessingService
+        from django.core.exceptions import ValidationError
+        img_file = create_test_image()
+
+        with patch('PIL.Image.open') as mock_open:
+            mock_open.side_effect = Image.DecompressionBombError("Too many pixels")
+            with self.assertRaises(ValidationError) as cm:
+                ImageProcessingService.validate_and_process_upload(img_file)
+            self.assertIn("decompression risk", str(cm.exception))
+

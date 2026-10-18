@@ -48,6 +48,13 @@ class SendMessageView(LoginRequiredMixin, View):
     """
 
     def post(self, request, *args, **kwargs):
+        from services.security_service import RateLimiter
+        if RateLimiter.is_rate_limited(identifier=str(request.user.id), action='stylist_message', max_requests=20, window_seconds=60):
+            return JsonResponse({
+                'success': False,
+                'error': 'You are sending styling requests too quickly. Please wait a minute before requesting another outfit.'
+            }, status=429)
+
         action = request.POST.get('action', '').strip()
         replace_item_id = request.POST.get('replace_item_id')
         prompt = request.POST.get('prompt', '').strip()
