@@ -205,3 +205,129 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         resp_search = self.client_a.get(reverse('wardrobe:gallery') + '?q=Kurta')
         self.assertContains(resp_search, 'Pink Kurta')
         self.assertNotContains(resp_search, 'White Loafers')
+
+
+from unittest.mock import patch, MagicMock
+from services.ai_service import AIService, AIServiceError, ClothingMetadataSuggestion
+from django.core.cache import cache
+
+
+class AIServiceVisionTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.test_img_bytes = b"fake-jpeg-binary-stream-for-tests"
+
+    @patch('services.ai_service.AIService.get_api_key', return_value='test-dummy-api-key')
+    @patch('google.genai.Client')
+    def test_suggest_clothing_metadata_success(self, mock_client_cls, mock_api_key):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = (
+            '{"category_slug": "outerwear", "primary_color": "Navy Blue", '
+            '"secondary_color": "Silver", "pattern": "solid", "confidence_notes": "Denim jacket"}'
+        )
+        mock_client.models.generate_content.return_value = mock_response
+
+        suggestion = AIService.suggest_clothing_metadata(self.test_img_bytes)
+
+        self.assertEqual(suggestion.category_slug, 'outerwear')
+        self.assertEqual(suggestion.primary_color, 'Navy Blue')
+        self.assertEqual(suggestion.secondary_color, 'Silver')
+        self.assertEqual(suggestion.pattern, 'solid')
+        self.assertEqual(suggestion.confidence_notes, 'Denim jacket')
+        mock_client.models.generate_content.assert_called_once()
+
+    @patch('services.ai_service.AIService.get_api_key', return_value='test-dummy-api-key')
+    @patch('google.genai.Client')
+    def test_suggest_clothing_metadata_caching_eliminates_redundant_calls(self, mock_client_cls, mock_api_key):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = '{"category_slug": "tops", "primary_color": "White", "pattern": "solid"}'
+        mock_client.models.generate_content.return_value = mock_response
+
+        # First call: invokes client
+        suggestion1 = AIService.suggest_clothing_metadata(self.test_img_bytes)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+
+        # Second call with identical bytes: served from cache
+        suggestion2 = AIService.suggest_clothing_metadata(self.test_img_bytes)
+        self.assertEqual(mock_client.models.generate_content.call_count, 1)
+        self.assertEqual(suggestion1.primary_color, suggestion2.primary_color)
+
+    @patch('services.ai_service.AIService.get_api_key', return_value='')
+    def test_suggest_clothing_metadata_missing_key_raises_ai_error(self, mock_api_key):
+        with self.assertRaises(AIServiceError) as cm:
+            AIService.suggest_clothing_metadata(self.test_img_bytes)
+        self.assertIn("AI styling service is not configured", str(cm.exception))
+
+    @patch('services.ai_service.AIService.get_api_key', return_value='test-key')
+    @patch('google.genai.Client')
+    def test_suggest_clothing_metadata_api_timeout_raises_ai_error(self, mock_client_cls, mock_api_key):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_client.models.generate_content.side_effect = TimeoutError("Connection timed out")
+
+        with self.assertRaises(AIServiceError) as cm:
+            AIService.suggest_clothing_metadata(self.test_img_bytes)
+        self.assertIn("temporarily unavailable", str(cm.exception))
+
+
+class ClothingMetadataSuggestEndpointTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(username='priya', email='priya@test.com', password='Password123!')
+        self.client = Client()
+        self.client.login(username='priya', password='Password123!')
+        self.suggest_url = reverse('wardrobe:suggest-metadata')
+
+    @patch('services.ai_service.AIService.suggest_clothing_metadata')
+    def test_suggest_metadata_endpoint_success(self, mock_suggest):
+        mock_suggest.return_value = ClothingMetadataSuggestion(
+            category_slug='footwear',
+            primary_color='Pink',
+            secondary_color='White',
+            pattern='solid',
+            confidence_notes='Low-top canvas sneakers'
+        )
+        test_file = create_test_image(format='JPEG')
+        resp = self.client.post(self.suggest_url, {'image': test_file})
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['category_slug'], 'footwear')
+        self.assertEqual(data['primary_color'], 'Pink')
+        self.assertEqual(data['pattern'], 'solid')
+
+    def test_suggest_metadata_endpoint_missing_image_fails_400(self):
+        resp = self.client.post(self.suggest_url, {})
+        self.assertEqual(resp.status_code, 400)
+        data = resp.json()
+        self.assertFalse(data['success'])
+
+    def test_suggest_metadata_endpoint_corrupt_file_fails_400(self):
+        bad_file = SimpleUploadedFile("bad.jpg", b"corrupted payload", content_type="image/jpeg")
+        resp = self.client.post(self.suggest_url, {'image': bad_file})
+        self.assertEqual(resp.status_code, 400)
+        data = resp.json()
+        self.assertFalse(data['success'])
+
+    @patch('services.ai_service.AIService.suggest_clothing_metadata')
+    def test_suggest_metadata_endpoint_ai_failure_returns_graceful_json(self, mock_suggest):
+        mock_suggest.side_effect = AIServiceError("AI service quota exceeded")
+        test_file = create_test_image(format='JPEG')
+        resp = self.client.post(self.suggest_url, {'image': test_file})
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data['success'])
+        self.assertIn("AI service quota exceeded", data['error'])
+
+    def test_suggest_metadata_endpoint_requires_authentication(self):
+        anon_client = Client()
+        test_file = create_test_image(format='JPEG')
+        resp = anon_client.post(self.suggest_url, {'image': test_file})
+        self.assertEqual(resp.status_code, 302)
+

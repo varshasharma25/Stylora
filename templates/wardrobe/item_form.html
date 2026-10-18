@@ -42,16 +42,23 @@
             {% endif %}
           </div>
 
-          <div style="flex: 1; min-width: 220px;">
             {{ form.original_image }}
             {% if form.original_image.errors %}
               {% for error in form.original_image.errors %}
               <span class="form-error">{{ error }}</span>
               {% endfor %}
             {% endif %}
-            <span class="form-text">Accepted: JPG, PNG, WebP up to 10MB. We automatically generate a crisp, fast thumbnail.</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+              <span class="form-text" style="margin-top: 0;">Accepted: JPG, PNG, WebP up to 10MB.</span>
+              <button type="button" id="ai-detect-btn" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.4rem 0.85rem; min-height: 36px; display: none;">
+                ✨ Auto-detect details with AI
+              </button>
+            </div>
           </div>
         </div>
+
+        <!-- AI Feedback Banner -->
+        <div id="ai-status-banner" style="display: none; margin-top: 1rem;"></div>
       </div>
 
       <hr style="border: none; border-top: 1px solid var(--border-subtle); margin-bottom: 1.5rem;">
@@ -147,11 +154,33 @@
 
 {% block extra_scripts %}
 <script>
-  // Immediate client-side image preview
   document.addEventListener('DOMContentLoaded', function() {
     var fileInput = document.getElementById('{{ form.original_image.id_for_label }}');
     var previewImg = document.getElementById('image-preview');
     var placeholder = document.getElementById('preview-placeholder');
+    var aiBtn = document.getElementById('ai-detect-btn');
+    var statusBanner = document.getElementById('ai-status-banner');
+
+    var categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    var primaryColorInput = document.getElementById('{{ form.primary_color.id_for_label }}');
+    var secondaryColorInput = document.getElementById('{{ form.secondary_color.id_for_label }}');
+    var patternSelect = document.getElementById('{{ form.pattern.id_for_label }}');
+    var notesInput = document.getElementById('{{ form.notes.id_for_label }}');
+
+    function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
 
     if (fileInput) {
       fileInput.addEventListener('change', function(e) {
@@ -160,18 +189,99 @@
           if (file.size > 10 * 1024 * 1024) {
             alert('File exceeds 10MB limit. Please choose a smaller photo.');
             fileInput.value = '';
+            aiBtn.style.display = 'none';
             return;
           }
+
           var reader = new FileReader();
           reader.onload = function(event) {
             previewImg.src = event.target.result;
             previewImg.style.display = 'block';
-            if (placeholder) {
-              placeholder.style.display = 'none';
-            }
+            if (placeholder) placeholder.style.display = 'none';
           };
           reader.readAsDataURL(file);
+
+          // Reveal AI auto-detect button
+          if (aiBtn) aiBtn.style.display = 'inline-flex';
         }
+      });
+    }
+
+    if (aiBtn) {
+      aiBtn.addEventListener('click', function() {
+        var file = fileInput.files[0];
+        if (!file) {
+          alert('Please choose a clothing photo first.');
+          return;
+        }
+
+        aiBtn.disabled = true;
+        var originalBtnHtml = aiBtn.innerHTML;
+        aiBtn.innerHTML = '✨ Analyzing garment...';
+        
+        statusBanner.style.display = 'block';
+        statusBanner.innerHTML = '<div class="alert alert-info"><span>Analyzing photo with Stylora AI...</span></div>';
+
+        var formData = new FormData();
+        formData.append('image', file);
+
+        fetch("{% url 'wardrobe:suggest-metadata' %}", {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          aiBtn.disabled = false;
+          aiBtn.innerHTML = originalBtnHtml;
+
+          if (data.success) {
+            // 1. Populate Category
+            if (categorySelect && data.category_slug) {
+              for (var i = 0; i < categorySelect.options.length; i++) {
+                var optText = categorySelect.options[i].text.toLowerCase();
+                if (optText.indexOf(data.category_slug) !== -1 || data.category_slug.indexOf(optText) !== -1) {
+                  categorySelect.selectedIndex = i;
+                  break;
+                }
+              }
+            }
+
+            // 2. Populate Colors
+            if (primaryColorInput && data.primary_color) {
+              primaryColorInput.value = data.primary_color;
+            }
+            if (secondaryColorInput && data.secondary_color) {
+              secondaryColorInput.value = data.secondary_color;
+            }
+
+            // 3. Populate Pattern
+            if (patternSelect && data.pattern) {
+              for (var j = 0; j < patternSelect.options.length; j++) {
+                if (patternSelect.options[j].value.toLowerCase() === data.pattern.toLowerCase()) {
+                  patternSelect.selectedIndex = j;
+                  break;
+                }
+              }
+            }
+
+            // 4. Populate Notes (only if currently empty)
+            if (notesInput && !notesInput.value && data.notes) {
+              notesInput.value = data.notes;
+            }
+
+            statusBanner.innerHTML = '<div class="alert alert-success"><span>✨ AI suggested details applied! Please review and edit before saving.</span></div>';
+          } else {
+            statusBanner.innerHTML = '<div class="alert alert-error"><span>Notice: ' + (data.error || 'AI auto-detection is currently unavailable. Please enter details manually.') + '</span></div>';
+          }
+        })
+        .catch(function(err) {
+          aiBtn.disabled = false;
+          aiBtn.innerHTML = originalBtnHtml;
+          statusBanner.innerHTML = '<div class="alert alert-error"><span>AI auto-detection is temporarily unavailable. Please enter details manually.</span></div>';
+        });
       });
     }
   });

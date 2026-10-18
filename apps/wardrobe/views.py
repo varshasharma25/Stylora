@@ -3,7 +3,7 @@ from django.views.generic import View, ListView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.urls import reverse_lazy, reverse
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, JsonResponse
 from django.db.models import Q
 
 from .models import ClothingItem, Category
@@ -142,3 +142,57 @@ class ProtectedMediaView(LoginRequiredMixin, View):
             return FileResponse(target_file.open('rb'), content_type='image/jpeg')
         except FileNotFoundError:
             raise Http404("Image file missing on disk.")
+
+
+class ClothingMetadataSuggestView(LoginRequiredMixin, View):
+    """
+    AJAX endpoint for vision-based clothing metadata auto-detection.
+    Validates uploaded photo through ImageProcessingService first, then
+    queries Gemini Flash via AIService to suggest category, colors, and pattern.
+    """
+
+    def post(self, request, *args, **kwargs):
+        uploaded_image = request.FILES.get('image')
+        if not uploaded_image:
+            return JsonResponse({
+                'success': False,
+                'error': 'No image file was provided.'
+            }, status=400)
+
+        try:
+            from services.image_service import ImageProcessingService
+            from services.ai_service import AIService, AIServiceError
+            from django.core.exceptions import ValidationError
+
+            # 1. Validate image format, binary magic bytes, and size <= 10MB
+            clean_original, thumb = ImageProcessingService.validate_and_process_upload(uploaded_image)
+
+            # 2. Query Gemini Flash Vision using optimized thumbnail bytes
+            thumb_bytes = thumb.read()
+            suggestion = AIService.suggest_clothing_metadata(thumb_bytes, mime_type='image/jpeg')
+
+            return JsonResponse({
+                'success': True,
+                'category_slug': suggestion.category_slug,
+                'primary_color': suggestion.primary_color,
+                'secondary_color': suggestion.secondary_color,
+                'pattern': suggestion.pattern,
+                'notes': suggestion.confidence_notes,
+            })
+
+        except ValidationError as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e.message if hasattr(e, 'message') else e)
+            }, status=400)
+        except AIServiceError as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=200)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': 'AI auto-detection is temporarily unavailable. Please enter details manually.'
+            }, status=200)
+
