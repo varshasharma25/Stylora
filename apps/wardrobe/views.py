@@ -125,6 +125,32 @@ class ClothingItemDeleteView(LoginRequiredMixin, View):
                 )
 
 
+class ClothingItemCreateView(LoginRequiredMixin, CreateView):
+    """Upload photo and catalog clothing metadata."""
+    model = ClothingItem
+    form_class = ClothingItemForm
+    template_name = 'wardrobe/item_form.html'
+    success_url = reverse_lazy('wardrobe:gallery')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.success(
+            self.request,
+            f"Added '{form.instance.name}' to your digital wardrobe!"
+        )
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = "Add Clothing Item"
+        context['is_create'] = True
+        return context
+
+
 class ClothingItemUpdateView(LoginRequiredMixin, UpdateView):
     """Edit clothing metadata and optionally update photo."""
     model = ClothingItem
