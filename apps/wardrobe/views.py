@@ -178,17 +178,6 @@ class ClothingItemUpdateView(LoginRequiredMixin, UpdateView):
         return context
 
 
-class ClothingItemDeleteView(LoginRequiredMixin, View):
-    """Safely remove clothing item via soft delete."""
-
-    def post(self, request, pk, *args, **kwargs):
-        # Scoped strictly to request.user
-        item = get_object_or_404(ClothingItem, pk=pk, user=request.user, is_active=True)
-        item.is_active = False
-        item.save()
-        messages.info(request, f"'{item.name}' was removed from your wardrobe.")
-        return redirect('wardrobe:gallery')
-
 
 class ProtectedMediaView(LoginRequiredMixin, View):
     """
