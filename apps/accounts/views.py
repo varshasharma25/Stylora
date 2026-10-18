@@ -65,9 +65,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         from apps.wardrobe.models import ClothingItem
+        from apps.outfits.models import Outfit
         context['wardrobe_count'] = ClothingItem.objects.filter(
             user=self.request.user,
             is_active=True
         ).count()
-        context['saved_outfits_count'] = 0
+        context['saved_outfits_count'] = Outfit.objects.filter(
+            user=self.request.user
+        ).count()
         return context

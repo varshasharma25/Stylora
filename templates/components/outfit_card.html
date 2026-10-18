@@ -1,35 +1,60 @@
 <!-- Reusable Outfit Card Component -->
 <div class="card outfit-card" style="background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-canvas) 100%); border: 1px solid var(--border-subtle); padding: 1.25rem; margin-top: 0.75rem;">
-  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; flex-wrap: wrap;">
     <div>
       <span class="brand-badge" style="font-size: 0.75rem;">Recommended Outfit</span>
       <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;">
         {{ outfit.outfit_title }}
       </h3>
     </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <button type="button" 
+              class="btn btn-primary save-look-btn" 
+              data-title="{{ outfit.outfit_title }}"
+              data-explanation="{{ outfit.styling_explanation }}"
+              data-missing="{{ outfit.missing_elements_advice|default:'' }}"
+              data-session-id="{{ outfit.session_id|default:'' }}"
+              data-item-ids="[{% for item in outfit.items %}{{ item.id }}{% if not forloop.last %},{% endif %}{% endfor %}]"
+              style="font-size: 0.8rem; padding: 0.35rem 0.75rem; min-height: 32px;">
+        ★ Save Look
+      </button>
+    </div>
   </div>
 
   <!-- Clothing Item Thumbnails Grid -->
   <div class="outfit-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
     {% for item in outfit.items %}
-    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center;">
-      <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--bg-surface-muted); position: relative; overflow: hidden;">
-        {% if item.thumbnail_url %}
-        <img src="{{ item.thumbnail_url }}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
-        {% else %}
-        <img src="{% url 'wardrobe:protected-media' pk=item.id version='thumb' %}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
-        {% endif %}
-        <span style="position: absolute; bottom: 0.35rem; left: 0.35rem; font-size: 0.65rem; font-weight: 700; background: rgba(15, 23, 42, 0.75); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px;">
-          {{ item.slot }}
-        </span>
+    <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--bg-surface-muted); position: relative; overflow: hidden;">
+          {% if item.thumbnail_url %}
+          <img src="{{ item.thumbnail_url }}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+          {% else %}
+          <img src="{% url 'wardrobe:protected-media' pk=item.id version='thumb' %}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+          {% endif %}
+          <span style="position: absolute; bottom: 0.35rem; left: 0.35rem; font-size: 0.65rem; font-weight: 700; background: rgba(15, 23, 42, 0.75); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px;">
+            {{ item.slot }}
+          </span>
+        </div>
+        <div style="padding: 0.4rem 0.5rem 0.2rem 0.5rem;">
+          <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;">
+            {{ item.name }}
+          </p>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+            {{ item.primary_color }}
+          </p>
+        </div>
       </div>
-      <div style="padding: 0.4rem 0.5rem;">
-        <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;">
-          {{ item.name }}
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-muted);">
-          {{ item.primary_color }}
-        </p>
+      <div style="padding: 0 0.4rem 0.4rem 0.4rem;">
+        <button type="button" 
+                class="btn btn-subtle replace-item-btn" 
+                data-item-id="{{ item.id }}" 
+                data-item-name="{{ item.name }}" 
+                data-item-category="{{ item.category }}"
+                title="Replace {{ item.name }} with an alternative {{ item.category }} from your closet"
+                style="font-size: 0.7rem; padding: 0.2rem 0.4rem; min-height: 26px; width: 100%; border: 1px solid var(--border-subtle); background: var(--bg-canvas); color: var(--text-secondary); border-radius: var(--radius-sm);">
+          ⇄ Replace
+        </button>
       </div>
     </div>
     {% endfor %}
@@ -46,8 +71,25 @@
   </div>
 
   {% if outfit.missing_elements_advice %}
-  <div style="background: var(--tint-sand-pastel); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.825rem; color: #78350F; line-height: 1.4;">
+  <div style="background: var(--tint-sand-pastel); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.825rem; color: #78350F; line-height: 1.4; margin-bottom: 0.75rem;">
     <strong>Stylist note:</strong> {{ outfit.missing_elements_advice }}
   </div>
   {% endif %}
+
+  <!-- Conversational Refinement Suggestions -->
+  <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; border-top: 1px dashed var(--border-subtle); padding-top: 0.6rem; margin-top: 0.25rem;">
+    <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Refine:</span>
+    <button type="button" class="btn btn-subtle refine-chip" data-prompt="Make this outfit more formal." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">
+      More formal
+    </button>
+    <button type="button" class="btn btn-subtle refine-chip" data-prompt="Keep the shoes and change the top." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">
+      Change top, keep shoes
+    </button>
+    <button type="button" class="btn btn-subtle refine-chip" data-prompt="Give me another option for this occasion." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">
+      Another option
+    </button>
+    <button type="button" class="btn btn-subtle refine-chip" data-prompt="Explain why these colors work together." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">
+      Explain color theory
+    </button>
+  </div>
 </div>

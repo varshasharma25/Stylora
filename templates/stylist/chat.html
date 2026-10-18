@@ -168,60 +168,144 @@
       });
     });
 
+    function sendStylingRequest(postData, displayUserText) {
+      if (!displayUserText) return;
+
+      // 1. Render User Message immediately in DOM
+      var userBubble = document.createElement('div');
+      userBubble.style.display = 'flex';
+      userBubble.style.justifyContent = 'flex-end';
+      userBubble.innerHTML = '<div style="background: var(--primary-600); color: #fff; padding: 0.85rem 1.15rem; border-radius: var(--radius-md) var(--radius-md) 0 var(--radius-md); max-width: 80%; font-size: 0.95rem; line-height: 1.4;">' +
+                             escapeHtml(displayUserText) + '</div>';
+      messagesContainer.appendChild(userBubble);
+      scrollToBottom();
+
+      promptInput.value = '';
+      promptInput.disabled = true;
+      sendBtn.disabled = true;
+      shimmer.style.display = 'block';
+      scrollToBottom();
+
+      var formData = new FormData();
+      for (var key in postData) {
+        formData.append(key, postData[key]);
+      }
+
+      fetch("{% url 'stylist:send-message' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        shimmer.style.display = 'none';
+        promptInput.disabled = false;
+        sendBtn.disabled = false;
+        promptInput.focus();
+
+        if (data.success && data.outfit) {
+          renderOutfitResponse(data.outfit);
+        } else {
+          renderAssistantError(data.error || "Stylora couldn't generate an outfit. Please try rephrasing.");
+        }
+        scrollToBottom();
+      })
+      .catch(function(err) {
+        shimmer.style.display = 'none';
+        promptInput.disabled = false;
+        sendBtn.disabled = false;
+        renderAssistantError("Network error. Please try styling again in a moment.");
+        scrollToBottom();
+      });
+    }
+
     if (chatForm) {
       chatForm.addEventListener('submit', function(e) {
         e.preventDefault();
         var promptText = promptInput.value.trim();
         if (!promptText) return;
+        sendStylingRequest({ 'prompt': promptText }, promptText);
+      });
+    }
 
-        // 1. Render User Message immediately in DOM
-        var userBubble = document.createElement('div');
-        userBubble.style.display = 'flex';
-        userBubble.style.justifyContent = 'flex-end';
-        userBubble.innerHTML = '<div style="background: var(--primary-600); color: #fff; padding: 0.85rem 1.15rem; border-radius: var(--radius-md) var(--radius-md) 0 var(--radius-md); max-width: 80%; font-size: 0.95rem; line-height: 1.4;">' +
-                               escapeHtml(promptText) + '</div>';
-        messagesContainer.appendChild(userBubble);
-        scrollToBottom();
+    // Event delegation for outfit card interactive buttons (Save Look, Replace Item, Refinement Chips)
+    document.addEventListener('click', function(e) {
+      // 1. Save Look Button
+      var saveBtn = e.target.closest('.save-look-btn');
+      if (saveBtn && !saveBtn.disabled) {
+        var outfitTitle = saveBtn.dataset.title;
+        var stylingExplanation = saveBtn.dataset.explanation;
+        var missingElements = saveBtn.dataset.missing;
+        var sessionId = saveBtn.dataset.sessionId;
+        var itemIdsRaw = saveBtn.dataset.itemIds;
 
-        promptInput.value = '';
-        promptInput.disabled = true;
-        sendBtn.disabled = true;
-        shimmer.style.display = 'block';
-        scrollToBottom();
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
 
-        var formData = new FormData();
-        formData.append('prompt', promptText);
+        var payload = {
+          outfit_title: outfitTitle,
+          styling_explanation: stylingExplanation,
+          missing_elements_advice: missingElements,
+          chat_session_id: sessionId,
+          item_ids: itemIdsRaw
+        };
 
-        fetch("{% url 'stylist:send-message' %}", {
+        fetch("{% url 'outfits:save' %}", {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('csrftoken')
           },
-          body: formData
+          body: JSON.stringify(payload)
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
-          shimmer.style.display = 'none';
-          promptInput.disabled = false;
-          sendBtn.disabled = false;
-          promptInput.focus();
-
-          if (data.success && data.outfit) {
-            renderOutfitResponse(data.outfit);
+          if (data.success) {
+            saveBtn.innerText = '✔ Saved Look';
+            saveBtn.style.background = 'var(--feedback-success)';
+            saveBtn.style.borderColor = 'var(--feedback-success)';
+            saveBtn.style.color = '#fff';
+            saveBtn.disabled = true;
           } else {
-            renderAssistantError(data.error || "Stylora couldn't generate an outfit. Please try rephrasing.");
+            saveBtn.disabled = false;
+            saveBtn.innerText = '★ Save Look';
+            alert(data.error || 'Unable to save outfit. Please try again.');
           }
-          scrollToBottom();
         })
-        .catch(function(err) {
-          shimmer.style.display = 'none';
-          promptInput.disabled = false;
-          sendBtn.disabled = false;
-          renderAssistantError("Network error. Please try styling again in a moment.");
-          scrollToBottom();
+        .catch(function() {
+          saveBtn.disabled = false;
+          saveBtn.innerText = '★ Save Look';
+          alert('Network error while saving outfit.');
         });
-      });
-    }
+        return;
+      }
+
+      // 2. Replace Item Button
+      var replaceBtn = e.target.closest('.replace-item-btn');
+      if (replaceBtn) {
+        var itemId = replaceBtn.dataset.itemId;
+        var itemName = replaceBtn.dataset.itemName;
+        var itemCategory = replaceBtn.dataset.itemCategory;
+        var userText = 'Keep the outfit, but replace ' + itemName + ' with another ' + itemCategory + ' from my closet.';
+        sendStylingRequest({
+          action: 'replace_item',
+          replace_item_id: itemId
+        }, userText);
+        return;
+      }
+
+      // 3. Conversational Refinement Chips
+      var refineChip = e.target.closest('.refine-chip');
+      if (refineChip) {
+        var refinePrompt = refineChip.dataset.prompt;
+        if (refinePrompt) {
+          sendStylingRequest({ prompt: refinePrompt }, refinePrompt);
+        }
+        return;
+      }
+    });
 
     function renderOutfitResponse(outfit) {
       var wrapper = document.createElement('div');
@@ -229,40 +313,62 @@
       wrapper.style.gap = '0.75rem';
       wrapper.style.alignItems = 'flex-start';
 
+      var itemIds = outfit.items.map(function(i) { return i.id; });
       var itemsHtml = '';
       outfit.items.forEach(function(item) {
-        itemsHtml += '<div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center;">' +
-                     '  <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--bg-surface-muted); position: relative; overflow: hidden;">' +
-                     '    <img src="' + item.thumbnail_url + '" alt="' + escapeHtml(item.name) + '" style="width: 100%; height: 100%; object-fit: cover;">' +
-                     '    <span style="position: absolute; bottom: 0.35rem; left: 0.35rem; font-size: 0.65rem; font-weight: 700; background: rgba(15, 23, 42, 0.75); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px;">' + item.slot + '</span>' +
+        itemsHtml += '<div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center; display: flex; flex-direction: column; justify-content: space-between;">' +
+                     '  <div>' +
+                     '    <div style="width: 100%; aspect-ratio: 1 / 1; background: var(--bg-surface-muted); position: relative; overflow: hidden;">' +
+                     '      <img src="' + item.thumbnail_url + '" alt="' + escapeHtml(item.name) + '" style="width: 100%; height: 100%; object-fit: cover;">' +
+                     '      <span style="position: absolute; bottom: 0.35rem; left: 0.35rem; font-size: 0.65rem; font-weight: 700; background: rgba(15, 23, 42, 0.75); color: #fff; padding: 0.1rem 0.35rem; border-radius: 3px;">' + item.slot + '</span>' +
+                     '    </div>' +
+                     '    <div style="padding: 0.4rem 0.5rem 0.2rem 0.5rem;">' +
+                     '      <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;">' + escapeHtml(item.name) + '</p>' +
+                     '      <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">' + escapeHtml(item.primary_color) + '</p>' +
+                     '    </div>' +
                      '  </div>' +
-                     '  <div style="padding: 0.4rem 0.5rem;">' +
-                     '    <p style="font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem;">' + escapeHtml(item.name) + '</p>' +
-                     '    <p style="font-size: 0.75rem; color: var(--text-muted);">' + escapeHtml(item.primary_color) + '</p>' +
+                     '  <div style="padding: 0 0.4rem 0.4rem 0.4rem;">' +
+                     '    <button type="button" class="btn btn-subtle replace-item-btn" data-item-id="' + item.id + '" data-item-name="' + escapeHtml(item.name) + '" data-item-category="' + escapeHtml(item.category) + '" style="font-size: 0.7rem; padding: 0.2rem 0.4rem; min-height: 26px; width: 100%; border: 1px solid var(--border-subtle); background: var(--bg-canvas); color: var(--text-secondary); border-radius: var(--radius-sm);">⇄ Replace</button>' +
                      '  </div>' +
                      '</div>';
       });
 
       var missingHtml = '';
       if (outfit.missing_elements_advice) {
-        missingHtml = '<div style="background: var(--tint-sand-pastel); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.825rem; color: #78350F; line-height: 1.4; margin-top: 0.75rem;">' +
+        missingHtml = '<div style="background: var(--tint-sand-pastel); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.825rem; color: #78350F; line-height: 1.4; margin-bottom: 0.75rem;">' +
                       '  <strong>Stylist note:</strong> ' + escapeHtml(outfit.missing_elements_advice) +
                       '</div>';
       }
 
+      var sessionId = outfit.session_id || '';
+
       wrapper.innerHTML = '<div style="width: 38px; height: 38px; border-radius: var(--radius-full); background: var(--primary-600); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0;">✨</div>' +
                           '<div style="max-width: 88%; width: 100%;">' +
                           '  <div class="card outfit-card" style="background: linear-gradient(180deg, #FFFFFF 0%, var(--bg-canvas) 100%); border: 1px solid var(--border-subtle); padding: 1.25rem;">' +
-                          '    <span class="brand-badge" style="font-size: 0.75rem;">Recommended Outfit</span>' +
-                          '    <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem; margin-bottom: 0.75rem;">' + escapeHtml(outfit.outfit_title) + '</h3>' +
+                          '    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; flex-wrap: wrap;">' +
+                          '      <div>' +
+                          '        <span class="brand-badge" style="font-size: 0.75rem;">Recommended Outfit</span>' +
+                          '        <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.25rem;">' + escapeHtml(outfit.outfit_title) + '</h3>' +
+                          '      </div>' +
+                          '      <div style="display: flex; gap: 0.5rem; align-items: center;">' +
+                          '        <button type="button" class="btn btn-primary save-look-btn" data-title="' + escapeHtml(outfit.outfit_title) + '" data-explanation="' + escapeHtml(outfit.styling_explanation) + '" data-missing="' + escapeHtml(outfit.missing_elements_advice || '') + '" data-session-id="' + sessionId + '" data-item-ids="' + escapeHtml(JSON.stringify(itemIds)) + '" style="font-size: 0.8rem; padding: 0.35rem 0.75rem; min-height: 32px;">★ Save Look</button>' +
+                          '      </div>' +
+                          '    </div>' +
                           '    <div class="outfit-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">' +
                           itemsHtml +
                           '    </div>' +
-                          '    <div style="background: var(--bg-surface); border-left: 3px solid var(--primary-500); padding: 0.85rem 1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">' +
+                          '    <div style="background: var(--bg-surface); border-left: 3px solid var(--primary-500); padding: 0.85rem 1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 0.75rem;">' +
                           '      <p style="font-size: 0.85rem; font-weight: 700; color: var(--primary-600); margin-bottom: 0.25rem;">💡 Why this outfit works:</p>' +
                           '      <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">' + escapeHtml(outfit.styling_explanation) + '</p>' +
                           '    </div>' +
                           missingHtml +
+                          '    <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; border-top: 1px dashed var(--border-subtle); padding-top: 0.6rem; margin-top: 0.25rem;">' +
+                          '      <span style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">Refine:</span>' +
+                          '      <button type="button" class="btn btn-subtle refine-chip" data-prompt="Make this outfit more formal." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">More formal</button>' +
+                          '      <button type="button" class="btn btn-subtle refine-chip" data-prompt="Keep the shoes and change the top." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">Change top, keep shoes</button>' +
+                          '      <button type="button" class="btn btn-subtle refine-chip" data-prompt="Give me another option for this occasion." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">Another option</button>' +
+                          '      <button type="button" class="btn btn-subtle refine-chip" data-prompt="Explain why these colors work together." style="font-size: 0.75rem; padding: 0.15rem 0.5rem; min-height: 26px; border-radius: var(--radius-full); background: var(--bg-canvas); border: 1px solid var(--border-subtle); color: var(--primary-600);">Explain color theory</button>' +
+                          '    </div>' +
                           '  </div>' +
                           '</div>';
 

@@ -25,6 +25,7 @@ urlpatterns = [
     path('', include('apps.accounts.urls')),
     path('', include('apps.wardrobe.urls')),
     path('', include('apps.stylist.urls')),
+    path('', include('apps.outfits.urls')),
 ]
 
 # Serve media and static files in development mode

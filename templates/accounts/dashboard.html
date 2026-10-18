@@ -76,7 +76,12 @@
       </p>
     </div>
     {% else %}
-    <p style="color: var(--text-secondary);">You have {{ saved_outfits_count }} outfits saved.</p>
+    <div style="text-align: center; padding: 1.5rem 1rem;">
+      <p style="color: var(--text-secondary); margin-bottom: 1rem;">You have <strong>{{ saved_outfits_count }}</strong> curated outfit(s) saved in your lookbook.</p>
+      <a href="{% url 'outfits:gallery' %}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
+        Browse Saved Looks →
+      </a>
+    </div>
     {% endif %}
   </div>
 </div>

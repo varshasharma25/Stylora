@@ -152,11 +152,13 @@ class AIService:
         inventory: list[dict],
         required_items: Optional[list[str]] = None,
         excluded_items: Optional[list[str]] = None,
-        chat_history: Optional[list[dict]] = None
+        chat_history: Optional[list[dict]] = None,
+        current_outfit: Optional[dict] = None
     ) -> OutfitResponseSchema:
         """
         Coordinates a personalized outfit using exclusively the user's owned inventory.
         Enforces structured output matching OutfitResponseSchema.
+        Supports multi-turn conversational refinement, replace-item requests, and style inquiries.
         """
         if not inventory:
             raise AIServiceError("Your wardrobe is empty. Please upload clothes before generating an outfit.")
@@ -176,6 +178,33 @@ class AIService:
             # Build compact JSON representation of owned inventory
             inventory_summary = json.dumps(inventory, indent=2)
 
+            # Format current active outfit if this is a follow-up refinement
+            outfit_context = ""
+            if current_outfit and current_outfit.get('items'):
+                items_desc = "\n".join(
+                    f"- [{item.get('slot', 'Item')}] ID {item.get('id')}: {item.get('name')} "
+                    f"({item.get('category')}, {item.get('primary_color')})"
+                    for item in current_outfit.get('items', [])
+                )
+                outfit_context = (
+                    "CURRENT ACTIVE OUTFIT BEING DISCUSSED:\n"
+                    f"Title: {current_outfit.get('outfit_title', 'Current Look')}\n"
+                    f"Explanation: {current_outfit.get('styling_explanation', '')}\n"
+                    f"Items:\n{items_desc}\n\n"
+                )
+
+            # Format recent conversation history (last 4 turns) for context
+            history_context = ""
+            if chat_history:
+                turns = []
+                for turn in chat_history[-4:]:
+                    role = "User" if turn.get('sender') == 'user' else "Stylist"
+                    text = turn.get('text', '')
+                    if text:
+                        turns.append(f"{role}: {text}")
+                if turns:
+                    history_context = "RECENT CONVERSATION HISTORY:\n" + "\n".join(turns) + "\n\n"
+
             # Build prompt with strict grounding constraints
             constraints = []
             if required_items:
@@ -189,14 +218,22 @@ class AIService:
                 "You are Stylora, an expert personal fashion stylist. "
                 "CRITICAL GROUNDING RULE: You may ONLY recommend clothing items from the user's provided inventory. "
                 "NEVER invent items, reference external stores, or hallucinate item IDs. "
-                "Every single item in your recommendation MUST have an 'item_id' that exists in the provided inventory list. "
-                "Construct a stylish, cohesive combination matching the user's occasion, weather, or aesthetic. "
-                "Provide a creative title and a clear, friendly explanation of why these colors, patterns, and silhouettes work together."
+                "Every single item in your recommendation MUST have an 'item_id' that exists in the provided inventory list.\n\n"
+                "CONVERSATIONAL REFINEMENT RULES:\n"
+                "- If the user asks to modify or refine an outfit (e.g. 'Make this more formal', 'Keep the shoes and change the top', 'Swap the jacket'): "
+                "respect their instructions, retain specified items from the current outfit, and select suitable replacements from their inventory.\n"
+                "- If the user asks for another option (e.g. 'Give me another option'): propose an alternative combination from their inventory.\n"
+                "- If the user asks an aesthetic or color theory question (e.g. 'Explain why these colors work together'): "
+                "maintain the items from the current outfit and provide an articulate, educational breakdown in 'styling_explanation'.\n"
+                "- Construct a stylish, cohesive combination matching the user's request, occasion, weather, or aesthetic.\n"
+                "- Provide a creative title and clear explanation."
             )
 
             prompt_content = (
                 f"{system_instruction}\n\n"
                 f"USER'S OWNED INVENTORY (Only choose from these items):\n{inventory_summary}\n\n"
+                f"{outfit_context}"
+                f"{history_context}"
                 f"SPECIAL CONSTRAINTS:\n{constraints_text}\n\n"
                 f"USER STYLING REQUEST:\n\"{user_prompt}\"\n\n"
                 "Return your recommendation as a JSON object adhering to the schema."

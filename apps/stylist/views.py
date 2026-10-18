@@ -48,9 +48,9 @@ class SendMessageView(LoginRequiredMixin, View):
     """
 
     def post(self, request, *args, **kwargs):
+        action = request.POST.get('action', '').strip()
+        replace_item_id = request.POST.get('replace_item_id')
         prompt = request.POST.get('prompt', '').strip()
-        if not prompt:
-            return JsonResponse({'success': False, 'error': 'Please enter a styling request.'}, status=400)
 
         # 1. Fetch authenticated user's active clothing inventory
         user_items = ClothingItem.objects.filter(
@@ -71,7 +71,42 @@ class SendMessageView(LoginRequiredMixin, View):
                 'error': f'You only have {item_count} item(s) logged. Please add at least a top, bottom, and shoes for complete outfits.'
             }, status=200)
 
-        # 2. Serialize inventory compactly for AI grounding
+        # 2. Get active chat session and extract recent conversation and current outfit context
+        session, _ = ChatSession.objects.get_or_create(
+            user=request.user,
+            defaults={'title': 'Current Styling Session'}
+        )
+
+        last_assistant_msg = session.messages.filter(sender='assistant').order_by('-created_at').first()
+        current_outfit = last_assistant_msg.raw_response if last_assistant_msg else None
+
+        recent_messages = list(session.messages.all().order_by('-created_at')[:4])
+        recent_messages.reverse()
+        chat_history = [
+            {'sender': msg.sender, 'text': msg.message_text}
+            for msg in recent_messages
+        ]
+
+        # 3. Optional filters/constraints
+        required_items = [r.strip() for r in request.POST.get('required', '').split(',') if r.strip()]
+        excluded_items = [e.strip() for e in request.POST.get('excluded', '').split(',') if e.strip()]
+
+        # Handle specific item replacement action
+        if action == 'replace_item' and replace_item_id:
+            try:
+                replace_item = user_items.get(id=int(replace_item_id))
+                prompt = (
+                    f"Please keep the rest of the current outfit, but replace {replace_item.name} "
+                    f"({replace_item.category.name}) with an alternative {replace_item.category.name} from my wardrobe."
+                )
+                excluded_items.append(replace_item.name)
+            except (ValueError, ClothingItem.DoesNotExist):
+                return JsonResponse({'success': False, 'error': 'Selected item to replace was not found.'}, status=400)
+
+        if not prompt:
+            return JsonResponse({'success': False, 'error': 'Please enter a styling request.'}, status=400)
+
+        # 4. Serialize inventory compactly for AI grounding
         serialized_inventory = [
             {
                 'id': item.id,
@@ -86,17 +121,15 @@ class SendMessageView(LoginRequiredMixin, View):
             for item in user_items
         ]
 
-        # 3. Optional filters/constraints
-        required_items = [r.strip() for r in request.POST.get('required', '').split(',') if r.strip()]
-        excluded_items = [e.strip() for e in request.POST.get('excluded', '').split(',') if e.strip()]
-
-        # 4. Invoke AI Service
+        # 5. Invoke AI Service with context
         try:
             raw_outfit = AIService.generate_wardrobe_outfit(
                 user_prompt=prompt,
                 inventory=serialized_inventory,
                 required_items=required_items,
                 excluded_items=excluded_items,
+                chat_history=chat_history,
+                current_outfit=current_outfit,
             )
         except AIServiceError as e:
             return JsonResponse({'success': False, 'error': str(e)}, status=200)
@@ -143,12 +176,6 @@ class SendMessageView(LoginRequiredMixin, View):
             }, status=200)
 
         # 6. Save messages to chat session
-        session, _ = ChatSession.objects.get_or_create(
-            user=request.user,
-            defaults={'title': 'Current Styling Session'}
-        )
-        
-        # Save user message
         ChatMessage.objects.create(
             session=session,
             sender='user',
@@ -161,6 +188,7 @@ class SendMessageView(LoginRequiredMixin, View):
             'styling_explanation': raw_outfit.styling_explanation,
             'missing_elements_advice': raw_outfit.missing_elements_advice,
             'items': sanitized_items_data,
+            'session_id': session.id,
         }
         
         ChatMessage.objects.create(

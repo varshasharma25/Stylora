@@ -197,3 +197,67 @@ class StylistRecommendationAndValidationTests(TestCase):
         data = resp.json()
         self.assertFalse(data['success'])
         self.assertIn("heavy demand", data['error'])
+
+    @patch('services.ai_service.AIService.generate_wardrobe_outfit')
+    def test_conversational_refinement_passes_context(self, mock_generate):
+        """Follow-up requests pass recent chat history and current outfit context to the AI service."""
+        # Setup active session with initial conversation
+        session = ChatSession.objects.create(user=self.user_a, title='Initial Styling')
+        ChatMessage.objects.create(session=session, sender='user', message_text='Casual brunch look')
+        ChatMessage.objects.create(
+            session=session,
+            sender='assistant',
+            message_text='Here is your brunch look.',
+            raw_response={
+                'outfit_title': 'Brunch Look',
+                'styling_explanation': 'Casual and breezy.',
+                'items': [{'id': self.item_a1.id, 'name': 'Pink Kurta', 'slot': 'Top'}]
+            }
+        )
+
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="Refined Formal Look",
+            styling_explanation="Elevated formality with darker tones.",
+            items=[
+                RecommendedItemRef(item_id=self.item_a2.id, slot="bottom", item_name="Blue Slim Jeans"),
+                RecommendedItemRef(item_id=self.item_a3.id, slot="shoes", item_name="Pink Sneakers"),
+            ]
+        )
+
+        resp = self.client_a.post(self.send_url, {'prompt': 'Make this more formal.'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['success'])
+
+        # Verify AI service was called with chat_history and current_outfit
+        mock_generate.assert_called_once()
+        _, kwargs = mock_generate.call_args
+        self.assertEqual(kwargs['user_prompt'], 'Make this more formal.')
+        self.assertIsNotNone(kwargs['current_outfit'])
+        self.assertEqual(kwargs['current_outfit']['outfit_title'], 'Brunch Look')
+        self.assertGreaterEqual(len(kwargs['chat_history']), 2)
+
+    @patch('services.ai_service.AIService.generate_wardrobe_outfit')
+    def test_replace_item_action(self, mock_generate):
+        """Clicking Replace Item generates targeted prompt and adds item to excluded list."""
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="Updated Combo",
+            styling_explanation="Swapped the top for an alternative.",
+            items=[
+                RecommendedItemRef(item_id=self.item_a2.id, slot="bottom", item_name="Blue Slim Jeans"),
+                RecommendedItemRef(item_id=self.item_a3.id, slot="shoes", item_name="Pink Sneakers"),
+            ]
+        )
+
+        resp = self.client_a.post(self.send_url, {
+            'action': 'replace_item',
+            'replace_item_id': str(self.item_a1.id)
+        })
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['success'])
+
+        mock_generate.assert_called_once()
+        _, kwargs = mock_generate.call_args
+        self.assertIn('replace Pink Kurta', kwargs['user_prompt'])
+        self.assertIn('Pink Kurta', kwargs['excluded_items'])
+

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}My Saved Looks — Stylora{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1000px; margin: 0 auto; padding-bottom: 3rem;">
+  <!-- Header Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1 style="font-size: 1.85rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+        My Saved Looks
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.95rem;">
+        Curated outfit combinations saved from your personal AI stylist consultations.
+      </p>
+    </div>
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+      <span class="brand-badge" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+        {{ total_saved_count }} Look{{ total_saved_count|pluralize }}
+      </span>
+      <a href="{% url 'stylist:chat' %}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+        ✨ Style New Look
+      </a>
+    </div>
+  </div>
+
+  {% if total_saved_count == 0 %}
+  <!-- Empty State -->
+  <div class="card empty-state" style="padding: 3.5rem 2rem; text-align: center;">
+    <div style="font-size: 3.5rem; margin-bottom: 1rem; line-height: 1;">★</div>
+    <h2 class="empty-state-title" style="font-size: 1.35rem; margin-bottom: 0.5rem;">No saved looks yet</h2>
+    <p class="empty-state-desc" style="max-width: 480px; margin: 0 auto 1.5rem auto; color: var(--text-secondary); line-height: 1.5;">
+      Ask your AI stylist for recommendations based on your closet. When you find an outfit you love, click "★ Save Look" to keep it here for easy reference.
+    </p>
+    <a href="{% url 'stylist:chat' %}" class="btn btn-primary" style="padding: 0.65rem 1.5rem;">
+      ✨ Go to AI Stylist
+    </a>
+  </div>
+  {% else %}
+  <!-- Saved Outfits Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 1.5rem;">
+    {% for outfit in outfits %}
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.25rem; border: 1px solid var(--border-subtle); background: var(--bg-surface);">
+      <div>
+        <!-- Card Header -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+          <div>
+            {% if outfit.occasion %}
+            <span class="brand-badge" style="font-size: 0.7rem; background: var(--tint-blue-pastel); color: var(--primary-600); margin-bottom: 0.25rem;">
+              {{ outfit.occasion }}
+            </span>
+            {% endif %}
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 0.2rem;">
+              {{ outfit.name }}
+            </h3>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap;">
+            {{ outfit.created_at|date:"M d, Y" }}
+          </span>
+        </div>
+
+        <!-- Clothing Items Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 0.5rem; margin-bottom: 1rem;">
+          {% for oi in outfit.outfit_items.all %}
+          <div style="background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); overflow: hidden; text-align: center;">
+            <div style="width: 100%; aspect-ratio: 1 / 1; position: relative; overflow: hidden; background: var(--bg-surface-muted);">
+              {% if oi.clothing_item and oi.clothing_item.is_active %}
+                <img src="{% url 'wardrobe:protected-media' pk=oi.clothing_item.pk version='thumb' %}" alt="{{ oi.clothing_item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+              {% else %}
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #FEF2F2; color: #991B1B; font-size: 1.25rem;" title="Item removed from wardrobe">
+                  🗑️
+                </div>
+              {% endif %}
+              <span style="position: absolute; bottom: 0.25rem; left: 0.25rem; font-size: 0.6rem; font-weight: 700; background: rgba(15, 23, 42, 0.8); color: #fff; padding: 0.05rem 0.3rem; border-radius: 3px;">
+                {{ oi.get_slot_display|default:oi.slot|capfirst }}
+              </span>
+            </div>
+            <div style="padding: 0.35rem 0.4rem;">
+              {% if oi.clothing_item and oi.clothing_item.is_active %}
+                <p style="font-size: 0.75rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.05rem;">
+                  {{ oi.clothing_item.name }}
+                </p>
+                <p style="font-size: 0.7rem; color: var(--text-muted);">
+                  {{ oi.clothing_item.primary_color }}
+                </p>
+              {% else %}
+                <p style="font-size: 0.75rem; font-weight: 600; color: #991B1B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.05rem;" title="{{ oi.item_name_snapshot }}">
+                  {{ oi.item_name_snapshot|default:"Item deleted" }}
+                </p>
+                <p style="font-size: 0.65rem; color: #DC2626;">
+                  (Deleted from closet)
+                </p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Styling Explanation -->
+        <div style="background: var(--bg-canvas); border-left: 3px solid var(--primary-500); padding: 0.75rem 0.85rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 0.75rem;">
+          <p style="font-size: 0.8rem; font-weight: 700; color: var(--primary-600); margin-bottom: 0.2rem;">
+            💡 Why this outfit works:
+          </p>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45;">
+            {{ outfit.styling_explanation }}
+          </p>
+        </div>
+
+        {% if outfit.missing_elements_advice %}
+        <div style="background: var(--tint-sand-pastel); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.8rem; color: #78350F; line-height: 1.4; margin-bottom: 0.75rem;">
+          <strong>Stylist note:</strong> {{ outfit.missing_elements_advice }}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Card Action Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-subtle); padding-top: 0.75rem; margin-top: 0.5rem;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">
+          {{ outfit.outfit_items.count }} piece{{ outfit.outfit_items.count|pluralize }}
+        </span>
+        <form action="{% url 'outfits:delete' pk=outfit.pk %}" method="post" onsubmit="return confirm('Are you sure you want to remove \'{{ outfit.name|escapejs }}\' from your saved looks?');" style="margin: 0;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-subtle" style="color: var(--feedback-error-text); font-size: 0.85rem; padding: 0.35rem 0.75rem; min-height: 34px;">
+            🗑️ Remove Look
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
