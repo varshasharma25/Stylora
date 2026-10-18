@@ -162,6 +162,7 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         resp_a = self.client_a.get(media_url)
         self.assertEqual(resp_a.status_code, 200)
         self.assertEqual(resp_a['Content-Type'], 'image/jpeg')
+        self.assertEqual(resp_a['Cache-Control'], 'private, max-age=86400')
 
         # 2. Non-owner (User B) receives 404
         resp_b = self.client_b.get(media_url)
@@ -205,6 +206,35 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         resp_search = self.client_a.get(reverse('wardrobe:gallery') + '?q=Kurta')
         self.assertContains(resp_search, 'Pink Kurta')
         self.assertNotContains(resp_search, 'White Loafers')
+
+    def test_wardrobe_gallery_pagination(self):
+        # Create 25 additional items for User A to exceed paginate_by = 24
+        test_img = create_test_image()
+        items = [
+            ClothingItem(
+                user=self.user_a,
+                category=self.category_tops,
+                name=f'Shirt {i}',
+                primary_color='Blue',
+                pattern='solid',
+                season='all',
+                original_image=test_img,
+                thumbnail_image=test_img,
+            )
+            for i in range(25)
+        ]
+        ClothingItem.objects.bulk_create(items)
+
+        resp = self.client_a.get(reverse('wardrobe:gallery'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['is_paginated'])
+        self.assertEqual(len(resp.context['items']), 24)
+
+        # Page 2
+        resp_p2 = self.client_a.get(reverse('wardrobe:gallery') + '?page=2')
+        self.assertEqual(resp_p2.status_code, 200)
+        self.assertEqual(len(resp_p2.context['items']), 2)  # 1 initial + 25 = 26 total (24 on p1, 2 on p2)
+
 
 
 from unittest.mock import patch, MagicMock

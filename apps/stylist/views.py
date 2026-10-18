@@ -36,8 +36,9 @@ class StylistChatView(LoginRequiredMixin, TemplateView):
         context['wardrobe_count'] = active_items_count
         context['needs_more_items'] = active_items_count < 3
 
-        # Load session messages
-        context['messages_history'] = session.messages.all().order_by('created_at')
+        # Load session messages (cap to latest 50 to maintain fast page render times)
+        messages_qs = session.messages.all().order_by('-created_at')[:50]
+        context['messages_history'] = list(reversed(messages_qs))
         return context
 
 

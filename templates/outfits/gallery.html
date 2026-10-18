@@ -128,6 +128,24 @@
     </div>
     {% endfor %}
   </div>
+
+  {% if is_paginated %}
+  <nav aria-label="Saved outfits pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin-top: 2rem;">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-secondary" style="min-height: 38px; padding: 0.4rem 0.85rem; font-size: 0.875rem;">
+        &larr; Previous
+      </a>
+    {% endif %}
+    <span style="font-size: 0.875rem; color: var(--text-secondary); padding: 0 0.5rem;">
+      Page {{ page_obj.number }} of {{ paginator.num_pages }}
+    </span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}" class="btn btn-secondary" style="min-height: 38px; padding: 0.4rem 0.85rem; font-size: 0.875rem;">
+        Next &rarr;
+      </a>
+    {% endif %}
+  </nav>
+  {% endif %}
   {% endif %}
 </div>
 {% endblock %}

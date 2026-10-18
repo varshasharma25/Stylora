@@ -157,6 +157,7 @@ class SavedOutfitsListView(LoginRequiredMixin, ListView):
     model = Outfit
     template_name = 'outfits/gallery.html'
     context_object_name = 'outfits'
+    paginate_by = 12
 
     def get_queryset(self):
         return Outfit.objects.filter(

@@ -225,3 +225,25 @@ class SavedOutfitsTests(TestCase):
         # Verify outfit persists
         self.assertTrue(Outfit.objects.filter(id=outfit.id).exists())
         self.assertEqual(Outfit.objects.filter(user=self.user_a).count(), 1)
+
+    def test_saved_outfits_gallery_pagination(self):
+        """Verify saved outfits gallery pagination kicks in when outfits exceed paginate_by = 12."""
+        outfits = [
+            Outfit(
+                user=self.user_a,
+                name=f'Outfit Look {i}',
+                styling_explanation=f'Explanation for look {i}'
+            )
+            for i in range(15)
+        ]
+        Outfit.objects.bulk_create(outfits)
+
+        resp = self.client_a.get(reverse('outfits:gallery'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['is_paginated'])
+        self.assertEqual(len(resp.context['outfits']), 12)
+
+        resp_p2 = self.client_a.get(reverse('outfits:gallery') + '?page=2')
+        self.assertEqual(resp_p2.status_code, 200)
+        self.assertEqual(len(resp_p2.context['outfits']), 3)
+

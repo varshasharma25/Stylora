@@ -15,6 +15,7 @@ class WardrobeGalleryView(LoginRequiredMixin, ListView):
     model = ClothingItem
     template_name = 'wardrobe/item_list.html'
     context_object_name = 'items'
+    paginate_by = 24
 
     def get_queryset(self):
         qs = ClothingItem.objects.filter(
@@ -139,7 +140,9 @@ class ProtectedMediaView(LoginRequiredMixin, View):
             raise Http404("Image not found.")
 
         try:
-            return FileResponse(target_file.open('rb'), content_type='image/jpeg')
+            response = FileResponse(target_file.open('rb'), content_type='image/jpeg')
+            response['Cache-Control'] = 'private, max-age=86400'
+            return response
         except FileNotFoundError:
             raise Http404("Image file missing on disk.")
 
