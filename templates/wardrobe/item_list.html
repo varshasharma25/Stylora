@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}My Wardrobe — Stylora{% endblock %}
+
+{% block content %}
+<div class="wardrobe-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+  <div>
+    <h1 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+      My Wardrobe
+    </h1>
+    <p style="color: var(--text-secondary); font-size: 0.95rem;">
+      {{ total_user_items }} items in your private collection
+    </p>
+  </div>
+  <div>
+    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary">
+      + Add Clothes
+    </a>
+  </div>
+</div>
+
+<!-- Category Filter Pills -->
+<div class="category-pills" style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.75rem; margin-bottom: 1rem; -webkit-overflow-scrolling: touch;">
+  <a href="{% url 'wardrobe:gallery' %}" class="btn {% if not selected_category %}btn-primary{% else %}btn-secondary{% endif %}" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; font-size: 0.875rem; min-height: 38px;">
+    All ({{ total_user_items }})
+  </a>
+  {% for cat in categories %}
+  <a href="{% url 'wardrobe:gallery' %}?category={{ cat.slug }}{% if selected_season %}&season={{ selected_season }}{% endif %}{% if selected_color %}&color={{ selected_color }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+     class="btn {% if selected_category == cat.slug %}btn-primary{% else %}btn-secondary{% endif %}"
+     style="border-radius: var(--radius-full); padding: 0.4rem 1rem; font-size: 0.875rem; min-height: 38px; white-space: nowrap;">
+    {{ cat.name }}
+  </a>
+  {% endfor %}
+</div>
+
+<!-- Secondary Filter & Search Bar -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.75rem;">
+  <form method="get" action="{% url 'wardrobe:gallery' %}" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+    {% if selected_category %}
+    <input type="hidden" name="category" value="{{ selected_category }}">
+    {% endif %}
+
+    <div style="flex: 2; min-width: 200px;">
+      <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="Search by item name or note..." style="padding: 0.5rem 0.85rem; font-size: 0.9rem; min-height: 38px;">
+    </div>
+
+    <div style="flex: 1; min-width: 140px;">
+      <select name="season" class="form-control" style="padding: 0.5rem 0.85rem; font-size: 0.9rem; min-height: 38px;">
+        <option value="">All Seasons</option>
+        <option value="all" {% if selected_season == 'all' %}selected{% endif %}>All-Season</option>
+        <option value="summer" {% if selected_season == 'summer' %}selected{% endif %}>Spring / Summer</option>
+        <option value="winter" {% if selected_season == 'winter' %}selected{% endif %}>Fall / Winter</option>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 140px;">
+      <input type="text" name="color" value="{{ selected_color }}" class="form-control" placeholder="Filter by color..." style="padding: 0.5rem 0.85rem; font-size: 0.9rem; min-height: 38px;">
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-secondary" style="padding: 0.5rem 1rem; min-height: 38px;">
+        Apply
+      </button>
+      {% if selected_category or selected_season or selected_color or search_query %}
+      <a href="{% url 'wardrobe:gallery' %}" class="btn btn-subtle" style="padding: 0.5rem 0.75rem; min-height: 38px;">
+        Reset
+      </a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<!-- Item Grid -->
+{% if items %}
+<div class="clothing-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1.5rem;">
+  {% for item in items %}
+  <div class="card clothing-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+    <!-- Protected Thumbnail View -->
+    <div style="position: relative; width: 100%; aspect-ratio: 1 / 1; background-color: var(--bg-surface-muted); overflow: hidden;">
+      <img src="{% url 'wardrobe:protected-media' pk=item.pk version='thumb' %}"
+           alt="{{ item.name }} — {{ item.primary_color }} {{ item.category.name }}"
+           loading="lazy"
+           style="width: 100%; height: 100%; object-fit: cover;">
+      
+      <span style="position: absolute; top: 0.65rem; left: 0.65rem; background: rgba(15, 23, 42, 0.75); color: #fff; font-size: 0.75rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm); backdrop-filter: blur(4px);">
+        {{ item.category.name }}
+      </span>
+    </div>
+
+    <div style="padding: 1rem; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem; line-height: 1.3;">
+          {{ item.name }}
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.4rem;">
+          <strong>Color:</strong> {{ item.primary_color }}{% if item.secondary_color %}, {{ item.secondary_color }}{% endif %}
+        </p>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+          {{ item.get_pattern_display }} &bull; {{ item.get_season_display }}
+        </p>
+        {% if item.notes %}
+        <p style="font-size: 0.825rem; color: var(--text-secondary); background: var(--bg-canvas); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); font-style: italic; margin-bottom: 0.75rem;">
+          "{{ item.notes|truncatechars:70 }}"
+        </p>
+        {% endif %}
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle);">
+        <a href="{% url 'wardrobe:item-edit' pk=item.pk %}" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.5rem; font-size: 0.85rem; min-height: 36px;">
+          Edit
+        </a>
+        <form method="post" action="{% url 'wardrobe:item-delete' pk=item.pk %}" style="flex: 1;" onsubmit="return confirm('Remove this {{ item.name }} from your wardrobe?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-block" style="padding: 0.4rem 0.5rem; font-size: 0.85rem; min-height: 36px;">
+            Delete
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<!-- Empty State -->
+<div class="empty-state">
+  <div class="empty-state-icon">👗</div>
+  {% if selected_category or selected_season or selected_color or search_query %}
+    <h2 class="empty-state-title">No clothes matched your filters</h2>
+    <p class="empty-state-desc">
+      Try clearing your search or season filters to view all your clothes.
+    </p>
+    <a href="{% url 'wardrobe:gallery' %}" class="btn btn-secondary">
+      Clear All Filters
+    </a>
+  {% else %}
+    <h2 class="empty-state-title">Your wardrobe is waiting</h2>
+    <p class="empty-state-desc">
+      Upload photos of your real clothes (tops, bottoms, shoes, and layers) so the AI stylist can start putting together personalized outfits for you!
+    </p>
+    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary">
+      + Add Your First Item
+    </a>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

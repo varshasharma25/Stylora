@@ -64,8 +64,10 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # In Milestone 3/4, this queries ClothingItem and Outfit models directly.
-        # For Milestone 2, it provides the empty state data structure.
-        context['wardrobe_count'] = 0
+        from apps.wardrobe.models import ClothingItem
+        context['wardrobe_count'] = ClothingItem.objects.filter(
+            user=self.request.user,
+            is_active=True
+        ).count()
         context['saved_outfits_count'] = 0
         return context

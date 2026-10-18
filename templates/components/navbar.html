@@ -13,7 +13,7 @@
             <a href="{% url 'accounts:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
           </li>
           <li>
-            <a href="{% url 'accounts:dashboard' %}#wardrobe" class="nav-link">Wardrobe</a>
+            <a href="{% url 'wardrobe:gallery' %}" class="nav-link {% if 'wardrobe' in request.path %}active{% endif %}">Wardrobe</a>
           </li>
           <li>
             <a href="{% url 'accounts:dashboard' %}#stylist" class="nav-link">AI Stylist</a>
@@ -52,7 +52,7 @@
       </a>
     </li>
     <li class="mobile-nav-item">
-      <a href="{% url 'accounts:dashboard' %}#wardrobe" class="mobile-nav-link">
+      <a href="{% url 'wardrobe:gallery' %}" class="mobile-nav-link {% if 'wardrobe' in request.path %}active{% endif %}">
         <span class="mobile-nav-icon">👗</span>
         <span>Closet</span>
       </a>

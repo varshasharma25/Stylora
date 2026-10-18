@@ -13,7 +13,7 @@
     </p>
   </div>
   <div>
-    <a href="#add-item" class="btn btn-primary" onclick="alert('Clothing upload is coming in Milestone 3!'); return false;">
+    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary">
       + Add Clothes
     </a>
   </div>
@@ -51,9 +51,9 @@
       <p class="empty-state-desc" style="font-size: 0.875rem; margin-bottom: 1rem;">
         Add your first 5 items (a top, bottom, shoes, and layers) so the stylist can coordinate looks for you.
       </p>
-      <button class="btn btn-secondary" onclick="alert('Clothing upload is coming in Milestone 3!');">
+      <a href="{% url 'wardrobe:item-create' %}" class="btn btn-secondary">
         Add Your First Item
-      </button>
+      </a>
     </div>
     {% else %}
     <p style="color: var(--text-secondary);">You have {{ wardrobe_count }} items logged.</p>

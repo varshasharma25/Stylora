@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', health_check_view, name='health-check'),
     path('', include('apps.accounts.urls')),
+    path('', include('apps.wardrobe.urls')),
 ]
 
 # Serve media and static files in development mode
