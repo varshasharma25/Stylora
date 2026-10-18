@@ -89,6 +89,29 @@ Stylora/
 
 ---
 
+## Preview & Staging Deployment (e.g. Render)
+
+Stylora is production-ready for deployment on Linux PaaS platforms such as Render, Railway, or Heroku.
+
+### 1. Build & Run Configuration
+- **Build Command:** `./build.sh` (or `pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate`)
+- **Start Command:** `gunicorn stylora.wsgi:application`
+- **Health Check Path:** `/health/`
+
+### 2. Required Production Environment Variables
+| Variable | Description | Example / Recommended Value |
+| :--- | :--- | :--- |
+| `DEBUG` | Disables debug mode in staging/production | `False` |
+| `SECRET_KEY` | Strong 50+ character cryptographic random key | Secure random token |
+| `ALLOWED_HOSTS` | Comma-separated list of allowed host domains | `stylora-preview.onrender.com,.onrender.com` |
+| `CSRF_TRUSTED_ORIGINS` | Trusted origins for HTTPS form submissions | `https://stylora-preview.onrender.com` |
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:password@hostname:5432/dbname` |
+| `GEMINI_API_KEY` | Google Gemini API key for vision & stylist AI | API key from Google AI Studio |
+| `SECURE_SSL_REDIRECT` | Redirect HTTP to HTTPS (default: True) | `True` |
+
+---
+
 ## Documentation Links
 - [PRD v1.0](Stylora%20%E2%80%94%20Product%20Requirements%20Document%20%28PRD%20v1.0%29.md)
 - [Project Rules & Coding Standards](docs/PROJECT_RULES.md)
+

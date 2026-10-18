@@ -260,6 +260,13 @@ class StyloraTemplateAccessibilityAndResponsivenessTests(TestCase):
         self.user = User.objects.create_user(username='a11y_user', email='a11y@test.com', password='Password123!')
         self.client.login(username='a11y_user', password='Password123!')
 
+    def test_health_check_endpoint(self):
+        resp = self.client.get(reverse('health-check'))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['status'], 'healthy')
+        self.assertEqual(data['app'], 'Stylora')
+
     def test_all_pages_include_accessible_landmarks_and_responsive_nav(self):
         endpoints = [
             reverse('accounts:dashboard'),
