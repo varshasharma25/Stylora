@@ -261,3 +261,110 @@ class StylistRecommendationAndValidationTests(TestCase):
         self.assertIn('replace Pink Kurta', kwargs['user_prompt'])
         self.assertIn('Pink Kurta', kwargs['excluded_items'])
 
+    @patch('services.ai_service.AIService.generate_wardrobe_outfit')
+    def test_qa_prompt_casual_and_formal_occasions(self, mock_generate):
+        """QA Test: 'Suggest a casual outfit for college' and 'Style something for a formal event'."""
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="College Casual Day",
+            styling_explanation="Pink Kurta paired with slim blue jeans offers an effortless campus aesthetic.",
+            items=[
+                RecommendedItemRef(item_id=self.item_a1.id, slot="top", item_name="Pink Kurta"),
+                RecommendedItemRef(item_id=self.item_a2.id, slot="bottom", item_name="Blue Slim Jeans"),
+                RecommendedItemRef(item_id=self.item_a3.id, slot="shoes", item_name="Pink Sneakers"),
+            ]
+        )
+
+        resp = self.client_a.post(self.send_url, {'prompt': 'Suggest a casual outfit for college.'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['outfit']['outfit_title'], "College Casual Day")
+        self.assertIn("effortless campus aesthetic", data['outfit']['styling_explanation'])
+
+        # Now test formal prompt
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="Elevated Evening Event",
+            styling_explanation="A refined monochrome palette suitable for formal evening dinners.",
+            items=[
+                RecommendedItemRef(item_id=self.item_a1.id, slot="top", item_name="Pink Kurta"),
+                RecommendedItemRef(item_id=self.item_a2.id, slot="bottom", item_name="Blue Slim Jeans"),
+            ]
+        )
+        resp_formal = self.client_a.post(self.send_url, {'prompt': 'Style something for a formal event.'})
+        self.assertEqual(resp_formal.status_code, 200)
+        self.assertTrue(resp_formal.json()['success'])
+        self.assertEqual(resp_formal.json()['outfit']['outfit_title'], "Elevated Evening Event")
+
+    @patch('services.ai_service.AIService.generate_wardrobe_outfit')
+    def test_qa_prompt_required_items_and_exclusions(self, mock_generate):
+        """QA Test: Anchoring around specific shoes and excluding jackets."""
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="Pink Sneaker Focal Outfit",
+            styling_explanation="Outfit centered on your pink sneakers with no jacket required.",
+            items=[
+                RecommendedItemRef(item_id=self.item_a1.id, slot="top", item_name="Pink Kurta"),
+                RecommendedItemRef(item_id=self.item_a2.id, slot="bottom", item_name="Blue Slim Jeans"),
+                RecommendedItemRef(item_id=self.item_a3.id, slot="shoes", item_name="Pink Sneakers"),
+            ],
+            missing_elements_advice="Since you excluded a jacket, consider rolling up sleeves for a casual look."
+        )
+
+        resp = self.client_a.post(self.send_url, {
+            'prompt': 'Create an outfit around my pink sneakers. I do not have a suitable jacket.',
+            'required': 'Pink Sneakers',
+            'excluded': 'Jacket, Blazer',
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+
+        _, kwargs = mock_generate.call_args
+        self.assertIn('Pink Sneakers', kwargs['required_items'])
+        self.assertIn('Jacket', kwargs['excluded_items'])
+        self.assertEqual(data['outfit']['outfit_title'], "Pink Sneaker Focal Outfit")
+
+    @patch('services.ai_service.AIService.generate_wardrobe_outfit')
+    def test_qa_conversational_followup_keep_shoes_change_top(self, mock_generate):
+        """QA Test: 'Keep the shoes and change the top' preserves shoes while swapping top."""
+        session = ChatSession.objects.create(user=self.user_a, title='Active QA Session')
+        ChatMessage.objects.create(session=session, sender='user', message_text='Initial outfit')
+        ChatMessage.objects.create(
+            session=session,
+            sender='assistant',
+            message_text='Here is look 1',
+            raw_response={
+                'outfit_title': 'Initial Look',
+                'items': [
+                    {'id': self.item_a1.id, 'name': 'Pink Kurta', 'slot': 'top'},
+                    {'id': self.item_a3.id, 'name': 'Pink Sneakers', 'slot': 'shoes'},
+                ]
+            }
+        )
+
+        # Create alternative top for User A
+        alt_top = ClothingItem.objects.create(
+            user=self.user_a, category=self.cat_tops, name='Linen Tunic',
+            primary_color='White', pattern='solid', season='all',
+            original_image=create_test_image(), thumbnail_image=create_test_image()
+        )
+
+        mock_generate.return_value = OutfitResponseSchema(
+            outfit_title="Refined Combo with Linen Tunic",
+            styling_explanation="Keeping your pink sneakers while swapping to the linen tunic for a lighter silhouette.",
+            items=[
+                RecommendedItemRef(item_id=alt_top.id, slot="top", item_name="Linen Tunic"),
+                RecommendedItemRef(item_id=self.item_a3.id, slot="shoes", item_name="Pink Sneakers"),
+            ]
+        )
+
+        resp = self.client_a.post(self.send_url, {'prompt': 'Keep the shoes and change the top.'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+
+        returned_ids = [item['id'] for item in data['outfit']['items']]
+        self.assertIn(self.item_a3.id, returned_ids)  # Sneakers kept
+        self.assertIn(alt_top.id, returned_ids)       # Top changed
+        self.assertNotIn(self.item_a1.id, returned_ids) # Old top replaced
+
+
