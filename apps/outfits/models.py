@@ -1,8 +1,13 @@
+import logging
+from django.db import transaction
+from django.core.files.storage import default_storage
+from django.db.models import Q
 from django.db import models
 from django.contrib.auth.models import User
 from apps.wardrobe.models import ClothingItem
 from apps.stylist.models import ChatSession
 
+logger = logging.getLogger(__name__)
 
 class Outfit(models.Model):
     """
