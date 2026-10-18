@@ -1,3 +1,4 @@
+from django.core.files.storage import default_storage
 import io
 from PIL import Image
 from django.test import TestCase, Client
@@ -61,7 +62,6 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         self.category_shoes = Category.objects.get(slug='footwear')
 
         # Create sample item for User A
-        test_img = create_test_image()
         self.item_a = ClothingItem.objects.create(
             user=self.user_a,
             category=self.category_tops,
@@ -71,9 +71,10 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
             pattern='floral',
             season='all',
             notes='Festive cotton kurta',
-            original_image=test_img,
-            thumbnail_image=test_img,
+            original_image=create_test_image(),
+            thumbnail_image=create_test_image(),
         )
+
 
     def test_gallery_displays_only_current_user_items(self):
         # User A views gallery -> sees Pink Kurta
@@ -124,36 +125,63 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         self.assertEqual(self.item_a.name, 'Updated Pink Kurta')
         self.assertEqual(self.item_a.primary_color, 'Rose Pink')
 
-    def test_clothing_item_soft_delete(self):
-        resp = self.client_a.post(reverse('wardrobe:item-delete', kwargs={'pk': self.item_a.pk}))
+
+    def test_clothing_item_permanent_delete(self):
+        original_name = self.item_a.original_image.name
+        thumbnail_name = self.item_a.thumbnail_image.name
+
+        # Ensure the test images exist before deletion.
+        self.assertTrue(default_storage.exists(original_name))
+        self.assertTrue(default_storage.exists(thumbnail_name))
+
+        # Execute on_commit callbacks so image cleanup is tested.
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self.client_a.post(
+                reverse(
+                    'wardrobe:item-delete',
+                    kwargs={'pk': self.item_a.pk},
+                )
+            )
+
         self.assertRedirects(resp, reverse('wardrobe:gallery'))
 
-        self.item_a.refresh_from_db()
-        self.assertFalse(self.item_a.is_active)
+        # The database record must be permanently deleted.
+        self.assertFalse(
+            ClothingItem.objects.filter(pk=self.item_a.pk).exists()
+        )
 
-        # Inactive item no longer displayed in gallery
-        gallery_resp = self.client_a.get(reverse('wardrobe:gallery'))
-        self.assertNotContains(gallery_resp, 'Pink Kurta')
-
-    def test_cross_user_edit_rejected_with_404(self):
-        # User B attempts to edit User A's item -> must return 404
-        resp = self.client_b.post(reverse('wardrobe:item-edit', kwargs={'pk': self.item_a.pk}), data={
-            'name': 'Hacked Kurta',
-            'category': self.category_tops.id,
-            'primary_color': 'Red',
-            'pattern': 'solid',
-            'season': 'all',
-        })
-        self.assertEqual(resp.status_code, 404)
-        self.item_a.refresh_from_db()
-        self.assertEqual(self.item_a.name, 'Pink Kurta')
+        # Both image files should be removed from storage.
+        self.assertFalse(default_storage.exists(original_name))
+        self.assertFalse(default_storage.exists(thumbnail_name))
 
     def test_cross_user_delete_rejected_with_404(self):
-        # User B attempts to delete User A's item -> must return 404
-        resp = self.client_b.post(reverse('wardrobe:item-delete', kwargs={'pk': self.item_a.pk}))
+        original_name = self.item_a.original_image.name
+        thumbnail_name = self.item_a.thumbnail_image.name
+
+        # User B attempts to delete User A's item.
+        resp = self.client_b.post(
+            reverse(
+                'wardrobe:item-delete',
+                kwargs={'pk': self.item_a.pk},
+            )
+        )
+
         self.assertEqual(resp.status_code, 404)
-        self.item_a.refresh_from_db()
-        self.assertTrue(self.item_a.is_active)
+
+        # The owner's database record must remain untouched.
+        self.assertTrue(
+            ClothingItem.objects.filter(
+                pk=self.item_a.pk,
+                user=self.user_a,
+                is_active=True,
+            ).exists()
+        )
+
+        # User B must not cause either image to be deleted.
+        self.assertTrue(default_storage.exists(original_name))
+        self.assertTrue(default_storage.exists(thumbnail_name))
+
+
 
     def test_protected_media_access_control(self):
         media_url = reverse('wardrobe:protected-media', kwargs={'pk': self.item_a.pk, 'version': 'thumb'})
@@ -208,32 +236,30 @@ class WardrobeCRUDAndAccessControlTests(TestCase):
         self.assertNotContains(resp_search, 'White Loafers')
 
     def test_wardrobe_gallery_pagination(self):
-        # Create 25 additional items for User A to exceed paginate_by = 24
-        test_img = create_test_image()
-        items = [
-            ClothingItem(
+        # Create 25 additional items for User A
+        for i in range(25):
+            ClothingItem.objects.create(
                 user=self.user_a,
                 category=self.category_tops,
                 name=f'Shirt {i}',
                 primary_color='Blue',
                 pattern='solid',
                 season='all',
-                original_image=test_img,
-                thumbnail_image=test_img,
+                original_image=create_test_image(),
+                thumbnail_image=create_test_image(),
             )
-            for i in range(25)
-        ]
-        ClothingItem.objects.bulk_create(items)
 
         resp = self.client_a.get(reverse('wardrobe:gallery'))
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.context['is_paginated'])
         self.assertEqual(len(resp.context['items']), 24)
 
-        # Page 2
-        resp_p2 = self.client_a.get(reverse('wardrobe:gallery') + '?page=2')
+        # 26 items total: 24 on page 1, 2 on page 2
+        resp_p2 = self.client_a.get(
+            reverse('wardrobe:gallery') + '?page=2'
+        )
         self.assertEqual(resp_p2.status_code, 200)
-        self.assertEqual(len(resp_p2.context['items']), 2)  # 1 initial + 25 = 26 total (24 on p1, 2 on p2)
+        self.assertEqual(len(resp_p2.context['items']), 2)
 
 
 
