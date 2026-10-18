@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "Stylora — Your Personal Stylist",
+  "short_name": "Stylora",
+  "description": "Your wardrobe, styled with AI.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#e8efff",
+  "categories": ["lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/static/icons/stylora-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icons/stylora-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
