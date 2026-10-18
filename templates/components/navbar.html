@@ -3,7 +3,6 @@
     <div class="nav-wrapper">
       <a href="{% if user.is_authenticated %}{% url 'accounts:dashboard' %}{% else %}{% url 'accounts:landing' %}{% endif %}" class="brand-logo" aria-label="Stylora Home">
         <span>Stylora</span>
-        <span class="brand-badge">MVP</span>
       </a>
 
       {% if user.is_authenticated %}

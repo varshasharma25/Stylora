@@ -10,17 +10,9 @@
   <h1 style="font-size: clamp(2rem, 5vw, 3.25rem); font-weight: 800; letter-spacing: -0.03em; color: var(--text-primary); line-height: 1.15; max-width: 800px; margin: 0 auto 1.25rem;">
     Stop staring at your closet.<br>Start wearing what you already own.
   </h1>
-  <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 620px; margin: 0 auto 2rem; line-height: 1.6;">
+  <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 620px; margin: 0 auto; line-height: 1.6;">
     Stylora turns your personal clothes into fresh, coordinated outfits for any occasion with a conversational AI stylist that recommends <strong>only items you actually own</strong>.
   </p>
-  <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-    <a href="{% url 'accounts:signup' %}" class="btn btn-primary" style="padding: 0.85rem 1.75rem; font-size: 1.05rem;">
-      Get Started Free
-    </a>
-    <a href="{% url 'accounts:login' %}" class="btn btn-secondary" style="padding: 0.85rem 1.5rem; font-size: 1.05rem;">
-      Log In to Closet
-    </a>
-  </div>
 </section>
 
 <section class="features-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
@@ -47,11 +39,5 @@
       Want to keep the same sneakers, swap the jacket, or make it more formal? Just chat back and forth until the look is exactly right.
     </p>
   </div>
-</section>
-
-<section class="trust-banner" style="margin-top: 3.5rem; text-align: center; background-color: var(--tint-blue-pastel); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid #BAE6FD;">
-  <p style="color: var(--primary-600); font-size: 0.95rem; font-weight: 600;">
-    🔒 100% Private: Your photos are strictly confidential and never used to train public AI models.
-  </p>
 </section>
 {% endblock %}

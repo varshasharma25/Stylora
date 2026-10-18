@@ -19,7 +19,7 @@ class AccountsAuthenticationTests(TestCase):
         response = self.client.get(reverse('accounts:landing'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Stop staring at your closet.')
-        self.assertContains(response, 'Get Started Free')
+        self.assertContains(response, 'Digital Wardrobe')
 
     def test_landing_page_redirects_authenticated_user_to_dashboard(self):
         self.client.login(username=self.username, password=self.password)
