@@ -1,3 +1,9 @@
+
+import logging
+
+from django.db import transaction
+from django.core.files.storage import default_storage
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import View, ListView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -8,7 +14,7 @@ from django.db.models import Q
 
 from .models import ClothingItem, Category
 from .forms import ClothingItemForm
-
+logger = logging.getLogger(__name__)
 
 class WardrobeGalleryView(LoginRequiredMixin, ListView):
     """Filterable responsive clothing gallery scoped to the current user."""
@@ -63,27 +69,60 @@ class WardrobeGalleryView(LoginRequiredMixin, ListView):
         return context
 
 
-class ClothingItemCreateView(LoginRequiredMixin, CreateView):
-    """Upload photo and catalog clothing metadata."""
-    model = ClothingItem
-    form_class = ClothingItemForm
-    template_name = 'wardrobe/item_form.html'
-    success_url = reverse_lazy('wardrobe:gallery')
+class ClothingItemDeleteView(LoginRequiredMixin, View):
+    """Permanently delete a user's clothing item and safely clean up its images."""
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
+    def post(self, request, pk, *args, **kwargs):
+        item = get_object_or_404(
+            ClothingItem,
+            pk=pk,
+            user=request.user,
+            is_active=True,
+        )
 
-    def form_valid(self, form):
-        messages.success(self.request, f"Added '{form.instance.name}' to your digital wardrobe!")
-        return super().form_valid(form)
+        # Save image paths before deleting the database record.
+        image_names = {
+            name
+            for name in (
+                item.original_image.name if item.original_image else None,
+                item.thumbnail_image.name if item.thumbnail_image else None,
+            )
+            if name
+        }
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['page_title'] = "Add Clothing Item"
-        context['is_create'] = True
-        return context
+        with transaction.atomic():
+            item_name = item.name
+            item.delete()
+
+            transaction.on_commit(
+                lambda names=image_names: self._delete_unreferenced_images(names)
+            )
+
+        messages.success(
+            request,
+            f"'{item_name}' was permanently deleted from your wardrobe.",
+        )
+        return redirect('wardrobe:gallery')
+
+    @staticmethod
+    def _delete_unreferenced_images(image_names):
+        """Delete stored images only if no clothing record still uses them."""
+        for image_name in image_names:
+            still_referenced = ClothingItem.objects.filter(
+                Q(original_image=image_name)
+                | Q(thumbnail_image=image_name)
+            ).exists()
+
+            if still_referenced:
+                continue
+
+            try:
+                default_storage.delete(image_name)
+            except Exception:
+                logger.exception(
+                    "Failed to delete wardrobe image from storage: %s",
+                    image_name,
+                )
 
 
 class ClothingItemUpdateView(LoginRequiredMixin, UpdateView):
