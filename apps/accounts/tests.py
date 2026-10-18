@@ -96,3 +96,14 @@ class AccountsAuthenticationTests(TestCase):
         response = self.client.post(reverse('accounts:logout'))
         self.assertRedirects(response, reverse('accounts:landing'))
         self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_footer_renders_privacy_safe_contact_links_and_no_personal_email(self):
+        response = self.client.get(reverse('accounts:landing'))
+        self.assertEqual(response.status_code, 200)
+        # Ensure hardcoded personal email is never rendered publicly
+        self.assertNotContains(response, 'varsharma2710@gmail.com')
+        # Ensure public professional links are present and valid
+        self.assertContains(response, 'Contact: Varsha Sharma')
+        self.assertContains(response, 'https://github.com/varshasharma25')
+        self.assertContains(response, 'https://linkedin.com/in/varsha-sharma-72b652366/')
+
