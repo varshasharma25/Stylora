@@ -104,7 +104,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Authentication Flow URLs
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/wardrobe/'
+LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/'
 
 # External AI Service Settings

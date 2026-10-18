@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Stylora — Your wardrobe, styled.{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  {% include 'components/navbar.html' %}
+
+  <main class="main-content" id="main-content">
+    <div class="container">
+      {% include 'components/messages.html' %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <p>&copy; {% now "Y" %} Stylora — Your wardrobe, styled. Built with Django.</p>
+      <p class="form-text" style="margin-top: 0;">Private & Grounded Personal AI Styling</p>
+    </div>
+  </footer>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

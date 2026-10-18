@@ -22,6 +22,7 @@ def health_check_view(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('health/', health_check_view, name='health-check'),
+    path('', include('apps.accounts.urls')),
 ]
 
 # Serve media and static files in development mode

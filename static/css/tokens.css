@@ -1,0 +1,52 @@
+/* Stylora Design Tokens - WCAG 2.1 AA Compliant */
+:root {
+  /* Canvas & Surfaces */
+  --bg-canvas: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-surface-muted: #F1F5F9;
+
+  /* Restrained Pastel Tints for Containers/Badges */
+  --tint-blue-pastel: #E0F2FE;
+  --tint-rose-pastel: #FFE4E6;
+  --tint-sand-pastel: #FEF3C7;
+  --tint-mint-pastel: #DCFCE7;
+
+  /* Typography Colors */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-on-primary: #FFFFFF;
+
+  /* Interactive Elements */
+  --primary-600: #1E3A8A;
+  --primary-500: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-active: #172554;
+
+  /* Borders */
+  --border-subtle: #E2E8F0;
+  --border-focus: #2563EB;
+
+  /* System Feedback */
+  --feedback-danger-bg: #FEF2F2;
+  --feedback-danger-border: #FCA5A5;
+  --feedback-danger-text: #B91C1C;
+  --feedback-success-bg: #F0FDF4;
+  --feedback-success-border: #86EFAC;
+  --feedback-success-text: #15803D;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-full: 9999px;
+
+  /* Typography Stack */
+  --font-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}

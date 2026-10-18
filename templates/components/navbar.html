@@ -1,0 +1,74 @@
+<header class="site-header">
+  <div class="container">
+    <div class="nav-wrapper">
+      <a href="{% if user.is_authenticated %}{% url 'accounts:dashboard' %}{% else %}{% url 'accounts:landing' %}{% endif %}" class="brand-logo" aria-label="Stylora Home">
+        <span>Stylora</span>
+        <span class="brand-badge">MVP</span>
+      </a>
+
+      {% if user.is_authenticated %}
+      <nav aria-label="Primary Desktop Navigation">
+        <ul class="nav-links">
+          <li>
+            <a href="{% url 'accounts:dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+          </li>
+          <li>
+            <a href="{% url 'accounts:dashboard' %}#wardrobe" class="nav-link">Wardrobe</a>
+          </li>
+          <li>
+            <a href="{% url 'accounts:dashboard' %}#stylist" class="nav-link">AI Stylist</a>
+          </li>
+          <li>
+            <a href="{% url 'accounts:dashboard' %}#outfits" class="nav-link">Saved Looks</a>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <span class="form-text" style="margin-top: 0; font-weight: 500;">{{ user.username }}</span>
+        <form action="{% url 'accounts:logout' %}" method="post" style="display: inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-subtle" aria-label="Log out of Stylora">Log out</button>
+        </form>
+      </div>
+      {% else %}
+      <div class="nav-actions">
+        <a href="{% url 'accounts:login' %}" class="btn btn-secondary">Log in</a>
+        <a href="{% url 'accounts:signup' %}" class="btn btn-primary">Sign up</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+{% if user.is_authenticated %}
+<!-- Mobile Bottom Navigation (< 768px) -->
+<nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
+  <ul class="mobile-nav-items">
+    <li class="mobile-nav-item">
+      <a href="{% url 'accounts:dashboard' %}" class="mobile-nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <span class="mobile-nav-icon">🏠</span>
+        <span>Home</span>
+      </a>
+    </li>
+    <li class="mobile-nav-item">
+      <a href="{% url 'accounts:dashboard' %}#wardrobe" class="mobile-nav-link">
+        <span class="mobile-nav-icon">👗</span>
+        <span>Closet</span>
+      </a>
+    </li>
+    <li class="mobile-nav-item">
+      <a href="{% url 'accounts:dashboard' %}#stylist" class="mobile-nav-link">
+        <span class="mobile-nav-icon">✨</span>
+        <span>Stylist</span>
+      </a>
+    </li>
+    <li class="mobile-nav-item">
+      <a href="{% url 'accounts:dashboard' %}#outfits" class="mobile-nav-link">
+        <span class="mobile-nav-icon">★</span>
+        <span>Saved</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
