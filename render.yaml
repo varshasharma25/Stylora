@@ -3,7 +3,7 @@ services:
     name: stylora-preview
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn stylora.wsgi:application
+    startCommand: gunicorn --timeout 120 stylora.wsgi:application
     plan: free
     healthCheckPath: /health/
     envVars:

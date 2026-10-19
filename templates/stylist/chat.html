@@ -305,7 +305,11 @@
         },
         body: formData
       })
-      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        return res.json().catch(function() {
+          return { success: false, error: "Stylora took a little longer than usual to respond. Please try your request again." };
+        });
+      })
       .then(function(data) {
         shimmer.style.display = 'none';
         promptInput.disabled = false;
@@ -323,7 +327,7 @@
         shimmer.style.display = 'none';
         promptInput.disabled = false;
         sendBtn.disabled = false;
-        renderAssistantError("Network error. Please try styling again in a moment.");
+        renderAssistantError("Stylora encountered a connection delay. Please try styling again in a moment.");
         scrollToBottom();
       });
     }

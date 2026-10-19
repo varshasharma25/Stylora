@@ -27,7 +27,7 @@
       </nav>
 
       <div class="nav-actions">
-        <a href="{% url 'accounts:profile' %}" class="form-text" style="margin-top: 0; font-weight: 600; text-decoration: none; color: var(--text-primary);" title="View profile">{{ user.username }}</a>
+        <a href="{% url 'accounts:profile' %}" class="form-text" style="margin-top: 0; font-weight: 600; text-decoration: none; color: var(--text-primary);" title="View profile">{% if user.first_name %}{{ user.first_name }}{% else %}My Profile{% endif %}</a>
         <form action="{% url 'accounts:logout' %}" method="post" style="display: inline;">
           {% csrf_token %}
           <button type="submit" class="btn btn-subtle" aria-label="Log out of Stylora">Log out</button>

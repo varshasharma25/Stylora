@@ -315,22 +315,31 @@ class FindMyColourView(LoginRequiredMixin, View):
         used_photo = False
 
         if uploaded_photo:
+            if hasattr(uploaded_photo, 'seek'):
+                uploaded_photo.seek(0)
             image_bytes = uploaded_photo.read()
             mime_type = getattr(uploaded_photo, 'content_type', 'image/jpeg')
             used_photo = True
 
-        # Perform analysis (handles AI timeouts & falls back seamlessly)
-        analysis_result = AIService.analyze_personal_color(
-            questionnaire_data=q_data,
-            image_bytes=image_bytes,
-            mime_type=mime_type
-        )
+        try:
+            # Perform analysis (handles AI timeouts & falls back seamlessly)
+            analysis_result = AIService.analyze_personal_color(
+                questionnaire_data=q_data,
+                image_bytes=image_bytes,
+                mime_type=mime_type
+            )
+        except Exception as e:
+            logger.error("Unexpected error during personal color analysis: %s", str(e), exc_info=True)
+            analysis_result = (
+                AIService.derive_image_based_season(image_bytes, q_data)
+                if image_bytes else AIService.derive_rule_based_season(q_data)
+            )
 
         # Prepare editable save form with suggested defaults and explicit False consent
         save_form = SaveColorPaletteForm(initial={
             'season': analysis_result.season,
-            'best_colors': ", ".join(analysis_result.best_colors),
-            'color_palette_notes': analysis_result.explanation,
+            'best_colors': ", ".join(analysis_result.best_colors or []),
+            'color_palette_notes': analysis_result.explanation or '',
             'consent': False,
         })
 
