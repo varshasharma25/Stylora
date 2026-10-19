@@ -6,6 +6,7 @@ Configured using django-environ following 12-factor principles.
 
 from pathlib import Path
 import environ
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -101,14 +102,24 @@ STATIC_ROOT.mkdir(parents=True, exist_ok=True)
 
 
 # Storage Configuration
-STORAGES = {
-    'default': {
-        'BACKEND': 'storages.backends.s3.S3Storage',
-    },
-    'staticfiles': {
-        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
-    },
-}
+if 'test' in sys.argv or not env('AWS_STORAGE_BUCKET_NAME', default=''):
+    STORAGES = {
+        'default': {
+            'BACKEND': 'django.core.files.storage.InMemoryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
+else:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3.S3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+        },
+    }
 
 # Neon S3-Compatible Object Storage
 AWS_S3_ENDPOINT_URL = env(

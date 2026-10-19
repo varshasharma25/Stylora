@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}Your Colour Analysis Results — Stylora{% endblock %}
+
+{% block content %}
+<div style="max-width: 820px; margin: 0 auto; padding-bottom: 3rem;">
+
+  <!-- Header -->
+  <div style="margin-bottom: 2rem; text-align: center;">
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: var(--tint-blue-pastel); padding: 0.35rem 0.85rem; border-radius: var(--radius-full); margin-bottom: 0.75rem;">
+      <span style="font-size: 0.9rem;">✨</span>
+      <span style="font-size: 0.825rem; font-weight: 700; color: var(--primary-600); text-transform: uppercase; letter-spacing: 0.05em;">
+        Your Seasonal Colour Harmony
+      </span>
+    </div>
+    <h1 style="font-size: 2.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.35rem;">
+      {{ result.season_name }}
+    </h1>
+    <p style="color: var(--text-secondary); font-size: 1rem; margin: 0;">
+      {% if used_photo %}Analyzed using your questionnaire observations and uploaded photo.{% else %}Analyzed using your undertone and aesthetic questionnaire responses.{% endif %}
+    </p>
+  </div>
+
+  <!-- Palette Swatch Ribbon -->
+  {% if result.hex_palette %}
+  <div class="card" style="margin-bottom: 1.75rem; padding: 1.25rem;">
+    <h3 style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem;">
+      Core Harmony Swatches
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 0.6rem;">
+      {% for hex in result.hex_palette %}
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 0.35rem;">
+        <div style="width: 100%; height: 56px; border-radius: var(--radius-md); background-color: {{ hex }}; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 1px 3px rgba(0,0,0,0.05);"></div>
+        <span style="font-size: 0.75rem; font-family: monospace; color: var(--text-muted);">{{ hex }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Advisory & Uncertainty Language Disclaimer -->
+  <div class="card" style="margin-bottom: 1.75rem; background: #FFFBEB; border: 1px solid #FDE68A;">
+    <div style="display: flex; gap: 0.85rem; align-items: flex-start;">
+      <div style="font-size: 1.35rem; line-height: 1;">💡</div>
+      <div>
+        <h4 style="font-size: 0.95rem; font-weight: 700; color: #92400E; margin-bottom: 0.25rem;">
+          Advisory Notice &amp; Uncertainty Context
+        </h4>
+        <p style="font-size: 0.85rem; color: #78350F; margin: 0; line-height: 1.5;">
+          Personal color typing is an advisory styling guideline meant for creative inspiration and everyday styling confidence, not an exact or rigid clinical diagnosis. Variables like ambient lighting, camera sensor tuning, and personal style goals all matter. You can adjust and fine-tune your palette below at any time.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analysis Breakdown Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+
+    <!-- Undertone & Contrast Overview -->
+    <div class="card">
+      <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem;">
+        🧬 Harmony Indicators
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-subtle);">
+          <span style="font-size: 0.875rem; color: var(--text-muted);">Dominant Undertone</span>
+          <span class="brand-badge" style="background: var(--tint-blue-pastel); color: var(--primary-600);">
+            {{ result.undertone }}
+          </span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-subtle);">
+          <span style="font-size: 0.875rem; color: var(--text-muted);">Visual Contrast</span>
+          <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary);">
+            {{ result.contrast_level }}
+          </span>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <h4 style="font-size: 0.875rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
+          Stylist Assessment:
+        </h4>
+        <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          {{ result.explanation }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Best Colors & Tones to Avoid -->
+    <div class="card">
+      <div style="margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803D; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>🌿</span> Most Flattering Shades
+        </h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+          {% for color in result.best_colors %}
+          <span class="brand-badge" style="background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0; font-size: 0.825rem;">
+            {{ color }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #B91C1C; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>⚠️</span> Colors to Use Cautiously
+        </h3>
+        <p style="font-size: 0.825rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+          These shades may wash out or overpower your natural coloring:
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+          {% for color in result.colors_to_avoid %}
+          <span class="brand-badge" style="background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; font-size: 0.825rem;">
+            {{ color }}
+          </span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Editable Controls & Consent-Based Save Card -->
+  <div class="card" style="border: 2px solid var(--border-subtle); background: #FAFAFA;">
+    <div style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+        ⚙️ Adjust &amp; Save to Profile
+      </h3>
+      <p class="form-text" style="margin-top: 0.25rem;">
+        Fine-tune your palette choices before opting in to save them to your profile.
+      </p>
+    </div>
+
+    <form method="post" action="{% url 'stylist:color-analysis-save' %}">
+      {% csrf_token %}
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+        <div class="form-group">
+          <label for="{{ save_form.season.id_for_label }}" class="form-label">{{ save_form.season.label }}</label>
+          {{ save_form.season }}
+          {% if save_form.season.errors %}
+            <div class="form-error">{{ save_form.season.errors|striptags }}</div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ save_form.best_colors.id_for_label }}" class="form-label">{{ save_form.best_colors.label }}</label>
+          {{ save_form.best_colors }}
+          {% if save_form.best_colors.errors %}
+            <div class="form-error">{{ save_form.best_colors.errors|striptags }}</div>
+          {% else %}
+            <span class="form-text">Comma-separated shades you feel best in.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label for="{{ save_form.color_palette_notes.id_for_label }}" class="form-label">{{ save_form.color_palette_notes.label }}</label>
+        {{ save_form.color_palette_notes }}
+        {% if save_form.color_palette_notes.errors %}
+          <div class="form-error">{{ save_form.color_palette_notes.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Explicit Unselected-by-Default Consent Checkbox -->
+      <div class="form-group" style="background: #FFFFFF; padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin-bottom: 1.75rem;">
+        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+          {{ save_form.consent }}
+          <div>
+            <label for="{{ save_form.consent.id_for_label }}" style="font-weight: 700; font-size: 0.925rem; color: var(--text-primary); cursor: pointer; display: block;">
+              {{ save_form.consent.label }}
+            </label>
+            <p class="form-text" style="margin-top: 0.35rem; font-size: 0.8rem; color: var(--text-secondary);">
+              🔒 <strong>Consent Requirement:</strong> Stylora respects your privacy. If you leave this box unchecked, your results will remain temporary in this session and will <em>not</em> be saved to your profile or referenced by AI styling.
+            </p>
+          </div>
+        </div>
+        {% if save_form.consent.errors %}
+          <div class="form-error">{{ save_form.consent.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <a href="{% url 'stylist:color-analysis' %}" class="btn btn-secondary">
+          ← Retake Questionnaire
+        </a>
+        <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.75rem;">
+          💾 Save to Profile
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

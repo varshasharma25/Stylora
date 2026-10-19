@@ -3,68 +3,238 @@
 {% block title %}Dashboard — Stylora{% endblock %}
 
 {% block content %}
-<div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
-  <div>
-    <h1 style="font-size: 1.75rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
-      Hello, {{ user.username }}!
-    </h1>
-    <p style="color: var(--text-secondary); font-size: 0.95rem;">
-      Welcome to your personal styling space.
-    </p>
-  </div>
-  <div>
-    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary">
-      + Add Clothes
-    </a>
-  </div>
-</div>
+<div class="dashboard-container" style="max-width: 1040px; margin: 0 auto; padding-bottom: 3rem;">
 
-<!-- Quick Styling Prompt Bar -->
-<div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #FFFFFF 0%, var(--tint-blue-pastel) 100%);">
-  <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.35rem;">
-    ✨ What are you dressing for today?
-  </h2>
-  <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
-    Describe an occasion, mood, or weather, and the AI stylist will coordinate an outfit using your own clothes.
-  </p>
-  <form method="get" action="{% url 'stylist:chat' %}" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-    <input type="text" name="prompt" class="form-control" style="flex: 1; min-width: 260px;" placeholder="e.g. 'Casual college fest tomorrow with my pink sneakers'...">
-    <button type="submit" class="btn btn-primary">
-      Style an Outfit
-    </button>
-  </form>
-</div>
-
-<!-- Wardrobe & Outfits State Grid -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-  <!-- Closet Stats -->
-  <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Wardrobe Inventory</h2>
-      <span class="brand-badge">{{ wardrobe_count }} Items</span>
-    </div>
-    
-    {% if wardrobe_count == 0 %}
-    <div class="empty-state" style="padding: 2rem 1rem; margin: 0;">
-      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">👗</div>
-      <h3 class="empty-state-title" style="font-size: 1.1rem;">Your closet is empty</h3>
-      <p class="empty-state-desc" style="font-size: 0.875rem; margin-bottom: 1rem;">
-        Add your first 5 items (a top, bottom, shoes, and layers) so the stylist can coordinate looks for you.
+  <!-- 1. Header & Quick Actions -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+    <div>
+      <h1 style="font-size: 1.85rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">
+        Hello, {{ user.first_name|default:user.username }}!
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0;">
+        Welcome to your personal wardrobe and styling dashboard.
       </p>
-      <a href="{% url 'wardrobe:item-create' %}" class="btn btn-secondary">
-        Add Your First Item
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary" style="font-weight: 600;">
+        + Add Clothes
       </a>
     </div>
-    {% else %}
-    <p style="color: var(--text-secondary);">You have {{ wardrobe_count }} items logged.</p>
+  </div>
+
+  <!-- 2. Feature Navigation Shortcuts Ribbon -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <!-- Closet Shortcut -->
+    <a href="{% url 'wardrobe:gallery' %}" class="card shortcut-card" style="text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; border-top: 3px solid #3B82F6;">
+      <div>
+        <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">👗</div>
+        <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+          My Closet
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+          Browse &amp; filter your {{ wardrobe_count }} digital wardrobe items.
+        </p>
+      </div>
+      <span style="font-size: 0.825rem; font-weight: 600; color: var(--primary-600); margin-top: 0.75rem;">
+        Open Closet →
+      </span>
+    </a>
+
+    <!-- AI Stylist Shortcut -->
+    <a href="{% url 'stylist:chat' %}" class="card shortcut-card" style="text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; border-top: 3px solid #8B5CF6;">
+      <div>
+        <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">✨</div>
+        <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+          AI Stylist
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+          Coordinate complete outfits or focus on tops, bottoms, and shoes.
+        </p>
+      </div>
+      <span style="font-size: 0.825rem; font-weight: 600; color: #7C3AED; margin-top: 0.75rem;">
+        Style Me →
+      </span>
+    </a>
+
+    <!-- Find My Colour Shortcut -->
+    <a href="{% url 'stylist:color-analysis' %}" class="card shortcut-card" style="text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; border-top: 3px solid #EC4899;">
+      <div>
+        <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">🎨</div>
+        <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+          Find My Colour
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+          Seasonal palette analysis with undertone and contrast matching.
+        </p>
+      </div>
+      <span style="font-size: 0.825rem; font-weight: 600; color: #DB2777; margin-top: 0.75rem;">
+        Take Quiz →
+      </span>
+    </a>
+
+    <!-- Saved Looks Shortcut -->
+    <a href="{% url 'outfits:gallery' %}" class="card shortcut-card" style="text-decoration: none; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s ease; border-top: 3px solid #10B981;">
+      <div>
+        <div style="font-size: 1.75rem; margin-bottom: 0.5rem;">★</div>
+        <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+          Saved Looks
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+          <strong>{{ saved_outfits_count }} Saved</strong> · {{ saved_outfits_count }} curated outfit(s) saved in your lookbook.
+        </p>
+      </div>
+      <span style="font-size: 0.825rem; font-weight: 600; color: #059669; margin-top: 0.75rem;">
+        View Collection →
+      </span>
+    </a>
+  </div>
+
+  <!-- 3. Today's Outfit Section (On-Demand Generation Only) -->
+  <div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #FFFFFF 0%, var(--tint-blue-pastel) 100%); border: 1px solid #BAE6FD;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <div style="display: inline-flex; align-items: center; gap: 0.4rem; background: #FFFFFF; padding: 0.25rem 0.65rem; border-radius: var(--radius-full); margin-bottom: 0.5rem; border: 1px solid #BAE6FD;">
+          <span style="font-size: 0.85rem;">✨</span>
+          <span style="font-size: 0.75rem; font-weight: 700; color: var(--primary-600); text-transform: uppercase; letter-spacing: 0.05em;">
+            On-Demand Stylist
+          </span>
+        </div>
+        <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">
+          Today's Outfit Suggestion
+        </h2>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0; max-width: 620px;">
+          Generate a fresh, coordinated look curated from your active closet. Gemini AI is only called when you explicitly click below.
+        </p>
+      </div>
+
+      <div>
+        {% if wardrobe_count >= 3 %}
+        <button id="generate-today-btn" type="button" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 600;">
+          ✨ Generate Today's Outfit
+        </button>
+        {% else %}
+        <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary" style="padding: 0.65rem 1.5rem; font-weight: 600;">
+          + Add Items to Unlock
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Feedback Container (Loading & Errors) -->
+    <div id="today-feedback-container" style="display: none; margin-top: 1rem;"></div>
+
+    <!-- Dynamic Outfit Result Container -->
+    <div id="today-outfit-container" style="display: none; margin-top: 1.25rem; background: #FFFFFF; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <div>
+          <h3 id="today-outfit-title" style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;"></h3>
+          <p id="today-outfit-explanation" style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.35rem; line-height: 1.5;"></p>
+        </div>
+        <button id="save-today-outfit-btn" type="button" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+          ★ Save to Lookbook
+        </button>
+      </div>
+
+      <div style="margin-top: 1rem;">
+        <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+          Selected Clothing Items
+        </h4>
+        <div id="today-outfit-items-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- Empty Wardrobe Initial Notice -->
+    {% if wardrobe_count == 0 %}
+    <div style="margin-top: 1rem; padding: 1rem; background: #FFFFFF; border-radius: var(--radius-md); border: 1px dashed var(--border-subtle); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <span style="font-size: 1.5rem;">👗</span>
+        <div>
+          <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">Your closet is empty</div>
+          <div style="font-size: 0.825rem; color: var(--text-secondary);">Add at least 3 items (top, bottom, and footwear) to enable Today's Outfit recommendations.</div>
+        </div>
+      </div>
+      <a href="{% url 'wardrobe:item-create' %}" class="btn btn-secondary" style="font-size: 0.85rem; padding: 0.35rem 0.85rem;">
+        Add First Item
+      </a>
+    </div>
+    {% elif wardrobe_count < 3 %}
+    <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #FFFBEB; border-radius: var(--radius-md); border: 1px solid #FDE68A; display: flex; align-items: center; gap: 0.75rem;">
+      <span style="font-size: 1.25rem;">💡</span>
+      <div style="font-size: 0.85rem; color: #92400E;">
+        You have {{ wardrobe_count }} item(s) logged. Stylora needs at least 3 items to coordinate a full outfit.
+      </div>
+    </div>
     {% endif %}
   </div>
 
-  <!-- Saved Looks -->
+  <!-- 4. Wardrobe Statistics (Actual Items) -->
+  <div class="card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+      <div>
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+          📊 Wardrobe Statistics
+        </h2>
+        <p class="form-text" style="margin-top: 0.25rem;">Real-time breakdown of your active collection</p>
+      </div>
+      <span class="brand-badge" style="background: var(--tint-blue-pastel); color: var(--primary-600); font-weight: 700;">
+        {{ wardrobe_count }} Total Items
+      </span>
+    </div>
+
+    {% if wardrobe_count == 0 %}
+    <div class="empty-state" style="padding: 2rem 1rem; margin: 0;">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">👕</div>
+      <h3 class="empty-state-title" style="font-size: 1.1rem;">No clothes in your wardrobe yet</h3>
+      <p class="empty-state-desc" style="font-size: 0.875rem; margin-bottom: 1rem;">
+        Upload photos of your tops, bottoms, and shoes to start generating personalized looks.
+      </p>
+      <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary">
+        + Add Your First Clothing Piece
+      </a>
+    </div>
+    {% else %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+      <div style="background: var(--bg-canvas); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: center;">
+        <span style="font-size: 1.5rem;">👕</span>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0.25rem 0;">{{ tops_count }}</div>
+        <div style="font-size: 0.825rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Tops</div>
+      </div>
+
+      <div style="background: var(--bg-canvas); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: center;">
+        <span style="font-size: 1.5rem;">👖</span>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0.25rem 0;">{{ bottoms_count }}</div>
+        <div style="font-size: 0.825rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Bottoms</div>
+      </div>
+
+      <div style="background: var(--bg-canvas); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: center;">
+        <span style="font-size: 1.5rem;">👟</span>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0.25rem 0;">{{ shoes_count }}</div>
+        <div style="font-size: 0.825rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Footwear</div>
+      </div>
+
+      <div style="background: var(--bg-canvas); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); text-align: center;">
+        <span style="font-size: 1.5rem;">👜</span>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin: 0.25rem 0;">{{ accessories_count }}</div>
+        <div style="font-size: 0.825rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Accessories</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 5. Recently Saved Outfits Section -->
   <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-      <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Saved Looks</h2>
-      <span class="brand-badge">{{ saved_outfits_count }} Saved</span>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.75rem;">
+      <div>
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+          ★ Recently Saved Outfits
+        </h2>
+        <p class="form-text" style="margin-top: 0.25rem;">Favorite looks ready to wear again</p>
+      </div>
+      {% if saved_outfits_count > 0 %}
+      <a href="{% url 'outfits:gallery' %}" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-600); text-decoration: none;">
+        View All ({{ saved_outfits_count }}) →
+      </a>
+      {% endif %}
     </div>
 
     {% if saved_outfits_count == 0 %}
@@ -72,17 +242,206 @@
       <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">★</div>
       <h3 class="empty-state-title" style="font-size: 1.1rem;">No saved looks yet</h3>
       <p class="empty-state-desc" style="font-size: 0.875rem; margin-bottom: 1rem;">
-        Once you style outfits with the AI, you can save your favorite combinations here to wear again.
+        Generate an outfit using Today's Outfit above or chat with the AI Stylist, then save your favorite combinations here.
       </p>
+      <a href="{% url 'stylist:chat' %}" class="btn btn-secondary">
+        Chat with AI Stylist
+      </a>
     </div>
     {% else %}
-    <div style="text-align: center; padding: 1.5rem 1rem;">
-      <p style="color: var(--text-secondary); margin-bottom: 1rem;">You have <strong>{{ saved_outfits_count }}</strong> curated outfit(s) saved in your lookbook.</p>
-      <a href="{% url 'outfits:gallery' %}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">
-        Browse Saved Looks →
-      </a>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem;">
+      {% for outfit in recent_outfits %}
+      <div style="background: var(--bg-canvas); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0;">
+              {{ outfit.name }}
+            </h3>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">
+              {{ outfit.created_at|date:"M j" }}
+            </span>
+          </div>
+          <p style="font-size: 0.825rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 0.75rem;">
+            {{ outfit.styling_explanation|truncatewords:18 }}
+          </p>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem;">
+            {% for item in outfit.active_items %}
+            <span class="brand-badge" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
+              {{ item.clothing_item.name }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <a href="{% url 'outfits:gallery' %}" class="btn btn-secondary" style="width: 100%; text-align: center; font-size: 0.85rem; padding: 0.35rem 0.75rem;">
+            View in Lookbook →
+          </a>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
   </div>
+
 </div>
+
+<!-- CSRF Token for dynamic AJAX calls -->
+{% csrf_token %}
+
+<style>
+  .shortcut-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    border-color: var(--primary-600);
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var todayBtn = document.getElementById('generate-today-btn');
+    var feedbackContainer = document.getElementById('today-feedback-container');
+    var outfitContainer = document.getElementById('today-outfit-container');
+    var outfitTitle = document.getElementById('today-outfit-title');
+    var outfitExplanation = document.getElementById('today-outfit-explanation');
+    var itemsList = document.getElementById('today-outfit-items-list');
+    var saveBtn = document.getElementById('save-today-outfit-btn');
+
+    var currentGeneratedOutfit = null;
+
+    function getCookie(name) {
+      var cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+          var cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    if (todayBtn) {
+      todayBtn.addEventListener('click', function() {
+        // Prevent duplicate rapid submissions
+        todayBtn.disabled = true;
+        todayBtn.innerText = "Curating your look...";
+
+        feedbackContainer.style.display = 'block';
+        feedbackContainer.innerHTML = '<div style="padding: 0.75rem 1rem; background: var(--bg-canvas); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); font-size: 0.875rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;"><span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid var(--primary-600); border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span> Stylora is selecting harmonious pieces from your closet...</div>';
+
+        outfitContainer.style.display = 'none';
+
+        var csrftoken = getCookie('csrftoken') || (document.querySelector('input[name="csrfmiddlewaretoken"]') ? document.querySelector('input[name="csrfmiddlewaretoken"]').value : '');
+
+        fetch("{% url 'accounts:today-outfit' %}", {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrftoken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: ''
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          todayBtn.disabled = false;
+          todayBtn.innerText = "✨ Regenerate Today's Outfit";
+
+          if (data.success && data.outfit) {
+            feedbackContainer.style.display = 'none';
+            currentGeneratedOutfit = data.outfit;
+
+            outfitTitle.innerText = data.outfit.outfit_title || "Today's Curated Look";
+            outfitExplanation.innerText = data.outfit.styling_explanation || "";
+
+            itemsList.innerHTML = '';
+            if (data.outfit.items && data.outfit.items.length > 0) {
+              data.outfit.items.forEach(function(item) {
+                var card = document.createElement('div');
+                card.style.background = 'var(--bg-canvas)';
+                card.style.padding = '0.75rem';
+                card.style.borderRadius = 'var(--radius-md)';
+                card.style.border = '1px solid var(--border-subtle)';
+
+                card.innerHTML = '<div style="font-size: 0.75rem; font-weight: 700; color: var(--primary-600); text-transform: uppercase;">' + (item.category || item.slot || 'Item') + '</div>' +
+                                 '<div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin: 0.2rem 0;">' + item.name + '</div>' +
+                                 '<div style="font-size: 0.75rem; color: var(--text-muted);">' + (item.primary_color ? 'Color: ' + item.primary_color : '') + '</div>';
+                itemsList.appendChild(card);
+              });
+            }
+
+            saveBtn.disabled = false;
+            saveBtn.innerText = "★ Save to Lookbook";
+            outfitContainer.style.display = 'block';
+          } else {
+            feedbackContainer.style.display = 'block';
+            feedbackContainer.innerHTML = '<div class="alert alert-error" style="margin: 0; font-size: 0.875rem;">' + (data.error || 'Failed to generate outfit. Please try again.') + '</div>';
+          }
+        })
+        .catch(function(err) {
+          todayBtn.disabled = false;
+          todayBtn.innerText = "✨ Generate Today's Outfit";
+          feedbackContainer.style.display = 'block';
+          feedbackContainer.innerHTML = '<div class="alert alert-error" style="margin: 0; font-size: 0.875rem;">Connectivity error. Please check your connection and try again.</div>';
+        });
+      });
+    }
+
+    // Save generated outfit to lookbook
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        if (!currentGeneratedOutfit) return;
+        saveBtn.disabled = true;
+        saveBtn.innerText = "Saving Look...";
+
+        var csrftoken = getCookie('csrftoken') || (document.querySelector('input[name="csrfmiddlewaretoken"]') ? document.querySelector('input[name="csrfmiddlewaretoken"]').value : '');
+
+        var itemIds = currentGeneratedOutfit.items.map(function(i) { return i.id; });
+
+        var formData = new FormData();
+        formData.append('outfit_title', currentGeneratedOutfit.outfit_title);
+        formData.append('styling_explanation', currentGeneratedOutfit.styling_explanation);
+        formData.append('missing_elements_advice', currentGeneratedOutfit.missing_elements_advice || '');
+        itemIds.forEach(function(id) {
+          formData.append('item_ids', id);
+        });
+
+        fetch("{% url 'outfits:save' %}", {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrftoken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.success) {
+            saveBtn.innerText = "✓ Saved to Lookbook!";
+            saveBtn.style.color = "#059669";
+            saveBtn.style.borderColor = "#A7F3D0";
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.innerText = "★ Save to Lookbook";
+            alert(data.error || "Could not save outfit.");
+          }
+        })
+        .catch(function() {
+          saveBtn.disabled = false;
+          saveBtn.innerText = "★ Save to Lookbook";
+          alert("Could not connect to save outfit.");
+        });
+      });
+    }
+  });
+</script>
+
+<style>
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
 {% endblock %}

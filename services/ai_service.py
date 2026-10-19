@@ -50,6 +50,129 @@ class OutfitResponseSchema(BaseModel):
     )
 
 
+class ColorAnalysisResult(BaseModel):
+    season: str = Field(description="One of the 12 seasons: 'warm_spring', 'light_spring', 'clear_spring', 'cool_summer', 'light_summer', 'soft_summer', 'warm_autumn', 'deep_autumn', 'soft_autumn', 'cool_winter', 'deep_winter', 'clear_winter'")
+    season_name: str = Field(description="Human readable name, e.g. 'Deep Autumn', 'Cool Summer'")
+    undertone: str = Field(description="Overall undertone: 'Warm', 'Cool', or 'Neutral'")
+    contrast_level: str = Field(description="Contrast: 'High', 'Medium', or 'Low/Soft'")
+    best_colors: list[str] = Field(description="4 to 6 top flattering colors for this palette")
+    colors_to_avoid: list[str] = Field(description="2 to 4 colors that may wash out or overpower this palette")
+    hex_palette: list[str] = Field(default_factory=list, description="5 to 6 hex colors representing the palette swatches")
+    explanation: str = Field(description="Advisory explanation detailing how skin undertone and contrast harmonize with this palette.")
+
+
+SEASON_PALETTES = {
+    'warm_spring': {
+        'name': 'Warm Spring',
+        'undertone': 'Warm',
+        'contrast': 'Medium to Bright',
+        'best_colors': ['Peach', 'Warm Coral', 'Golden Yellow', 'Warm Turquoise', 'Light Moss Green', 'Cream'],
+        'colors_to_avoid': ['Stark Black', 'Cool Icy Grey', 'Fuchsia'],
+        'hex_palette': ['#FDBA74', '#FB7185', '#FACC15', '#2DD4BF', '#86EFAC', '#FEF3C7'],
+        'description': 'Characterized by warm, fresh, and golden undertones with sunny clarity.',
+    },
+    'light_spring': {
+        'name': 'Light Spring',
+        'undertone': 'Warm & Light',
+        'contrast': 'Delicate & Bright',
+        'best_colors': ['Soft Peach', 'Mint Green', 'Warm Apricot', 'Buttercup Yellow', 'Camel', 'Ivory'],
+        'colors_to_avoid': ['Heavy Charcoal', 'Dark Burgundy', 'Harsh Black'],
+        'hex_palette': ['#FED7AA', '#A7F3D0', '#FDE68A', '#FDBA74', '#D79A62', '#FFFBEB'],
+        'description': 'Warm and illuminated with delicate golden-peach undertones.',
+    },
+    'clear_spring': {
+        'name': 'Clear Spring',
+        'undertone': 'Warm & Clear',
+        'contrast': 'High & Striking',
+        'best_colors': ['Bright Coral', 'Cobalt Cyan', 'Poppy Red', 'Sunny Gold', 'Bright Emerald', 'Warm White'],
+        'colors_to_avoid': ['Muted Earth Tones', 'Dusty Lavender', 'Washed Grey'],
+        'hex_palette': ['#F43F5E', '#06B6D4', '#EF4444', '#EAB308', '#10B981', '#FAF5FF'],
+        'description': 'Vibrant and luminous with strong contrast and warm vitality.',
+    },
+    'cool_summer': {
+        'name': 'Cool Summer',
+        'undertone': 'Cool',
+        'contrast': 'Gentle & Muted',
+        'best_colors': ['Powder Blue', 'Lavender', 'Soft Rose', 'Slate Blue', 'Cool Grey', 'Seafoam'],
+        'colors_to_avoid': ['Mustard Yellow', 'Rust Orange', 'Golden Brown'],
+        'hex_palette': ['#93C5FD', '#C4B5FD', '#F472B6', '#64748B', '#94A3B8', '#99F6E4'],
+        'description': 'Subtle, powdery, and harmonious with cool blue or pink undertones.',
+    },
+    'light_summer': {
+        'name': 'Light Summer',
+        'undertone': 'Cool & Light',
+        'contrast': 'Soft & Low',
+        'best_colors': ['Sky Blue', 'Pastel Pink', 'Soft Lilac', 'Pale Sage', 'Heather Grey', 'Chalk White'],
+        'colors_to_avoid': ['Stark Neon', 'Deep Terracotta', 'Heavy Black'],
+        'hex_palette': ['#BAE6FD', '#FBCFE8', '#DDD6FE', '#BBF7D0', '#CBD5E1', '#F8FAFC'],
+        'description': 'Ethereal, delicate coolness with softly blended contrast.',
+    },
+    'soft_summer': {
+        'name': 'Soft Summer',
+        'undertone': 'Cool & Muted',
+        'contrast': 'Medium & Smoky',
+        'best_colors': ['Dusty Rose', 'Slate Blue', 'Muted Sage', 'Taupe Grey', 'Plum Grey', 'Soft Navy'],
+        'colors_to_avoid': ['Electric Brights', 'Primary Orange', 'Neon Lime'],
+        'hex_palette': ['#FDA4AF', '#60A5FA', '#86EFAC', '#A8A29E', '#7E22CE', '#334155'],
+        'description': 'Muted elegance with gentle cool grey or rose undertones.',
+    },
+    'warm_autumn': {
+        'name': 'Warm Autumn',
+        'undertone': 'Warm',
+        'contrast': 'Medium to Rich',
+        'best_colors': ['Terracotta', 'Rust Orange', 'Mustard Yellow', 'Forest Green', 'Warm Camel', 'Dark Olive'],
+        'colors_to_avoid': ['Icy Pink', 'Cool Fuchsia', 'Stark Chalk White'],
+        'hex_palette': ['#C2410C', '#EA580C', '#CA8A04', '#15803D', '#B45309', '#3F6212'],
+        'description': 'Rich, earthy, and sun-warmed with golden or bronze undertones.',
+    },
+    'deep_autumn': {
+        'name': 'Deep Autumn',
+        'undertone': 'Warm & Deep',
+        'contrast': 'High & Saturated',
+        'best_colors': ['Burnt Sienna', 'Deep Forest Olive', 'Burgundy Wine', 'Warm Chocolate', 'Deep Teal', 'Spiced Ochre'],
+        'colors_to_avoid': ['Pale Pastel Pink', 'Icy Lavender', 'Pale Muted Grey'],
+        'hex_palette': ['#9A3412', '#365314', '#881337', '#451A03', '#115E59', '#D97706'],
+        'description': 'Intense and opulent warmth with grounding richness and depth.',
+    },
+    'soft_autumn': {
+        'name': 'Soft Autumn',
+        'undertone': 'Warm & Muted',
+        'contrast': 'Low to Medium',
+        'best_colors': ['Olive Khaki', 'Warm Sand', 'Dusty Peach', 'Muted Cinnamon', 'Sage', 'Creamy Ecru'],
+        'colors_to_avoid': ['Crisp Royal Blue', 'Stark Black', 'Vibrant Magenta'],
+        'hex_palette': ['#65A30D', '#D97706', '#FDBA74', '#92400E', '#A7F3D0', '#FEF3C7'],
+        'description': 'Softened, earthy warmth with gentle golden-khaki harmony.',
+    },
+    'cool_winter': {
+        'name': 'Cool Winter',
+        'undertone': 'Cool',
+        'contrast': 'High & Dramatic',
+        'best_colors': ['Royal Cobalt', 'True Emerald', 'Ruby Red', 'Crisp Pure White', 'Pitch Black', 'Icy Blue'],
+        'colors_to_avoid': ['Warm Mustard', 'Rust', 'Earthy Ochre', 'Orange'],
+        'hex_palette': ['#1D4ED8', '#047857', '#BE123C', '#FFFFFF', '#0F172A', '#E0F2FE'],
+        'description': 'Pure, crisp, and high-contrast coolness with jewel-like clarity.',
+    },
+    'deep_winter': {
+        'name': 'Deep Winter',
+        'undertone': 'Cool & Deep',
+        'contrast': 'Intense & Sharp',
+        'best_colors': ['Jet Black', 'Deep Pine', 'Blackberry Wine', 'Royal Violet', 'True Crimson', 'Crisp White'],
+        'colors_to_avoid': ['Warm Camel', 'Mustard Yellow', 'Peachy Orange'],
+        'hex_palette': ['#020617', '#064E3B', '#4C0519', '#581C87', '#991B1B', '#F8FAFC'],
+        'description': 'Deep, striking coolness with sharp contrast and dramatic saturation.',
+    },
+    'clear_winter': {
+        'name': 'Clear Winter',
+        'undertone': 'Cool & Bright',
+        'contrast': 'Ultra High & Brilliant',
+        'best_colors': ['Electric Royal Blue', 'Hot Fuchsia', 'Bright Emerald', 'True Violet', 'Icy Silver', 'Pure White'],
+        'colors_to_avoid': ['Muted Camel', 'Dusty Olive', 'Warm Muddy Brown'],
+        'hex_palette': ['#2563EB', '#DB2777', '#059669', '#7C3AED', '#E2E8F0', '#FFFFFF'],
+        'description': 'Dazzling contrast and vivid icy coolness with intense luminosity.',
+    },
+}
+
+
 class AIServiceError(Exception):
     """Custom exception raised when an AI generation or validation step fails."""
     pass
@@ -150,6 +273,7 @@ class AIService:
         cls,
         user_prompt: str,
         inventory: list[dict],
+        mode: str = 'full',
         required_items: Optional[list[str]] = None,
         excluded_items: Optional[list[str]] = None,
         chat_history: Optional[list[dict]] = None,
@@ -158,7 +282,7 @@ class AIService:
         """
         Coordinates a personalized outfit using exclusively the user's owned inventory.
         Enforces structured output matching OutfitResponseSchema.
-        Supports multi-turn conversational refinement, replace-item requests, and style inquiries.
+        Supports multi-turn conversational refinement, replace-item requests, styling focus modes, and style inquiries.
         """
         if not inventory:
             raise AIServiceError("Your wardrobe is empty. Please upload clothes before generating an outfit.")
@@ -214,8 +338,38 @@ class AIService:
             
             constraints_text = "\n".join(constraints) if constraints else "No special inclusions/exclusions specified."
 
+            # Mode-specific instructions
+            mode_instructions = {
+                'tops': (
+                    "STYLING FOCUS MODE: 'Tops only'.\n"
+                    "- Recommend 1 or 2 top(s), shirt(s), t-shirt(s), or kurta(s) strictly from the provided inventory matching the request.\n"
+                    "- Do NOT select items from any other category (no bottoms, footwear, or accessories)."
+                ),
+                'bottoms': (
+                    "STYLING FOCUS MODE: 'Bottoms only'.\n"
+                    "- Recommend 1 or 2 bottom(s), pant(s), trouser(s), skirt(s), or jean(s) strictly from the provided inventory matching the request.\n"
+                    "- Do NOT select items from any other category (no tops, footwear, or accessories)."
+                ),
+                'shoes': (
+                    "STYLING FOCUS MODE: 'Shoes only'.\n"
+                    "- Recommend 1 pair of shoes, sneaker(s), or footwear strictly from the provided inventory matching the request.\n"
+                    "- Do NOT select items from any other category (no tops, bottoms, or accessories)."
+                ),
+                'accessories': (
+                    "STYLING FOCUS MODE: 'Accessories only'.\n"
+                    "- Recommend 1 or more bag(s), scarf/scarves, belt(s), or accessory item(s) strictly from the provided inventory matching the request.\n"
+                    "- Do NOT select items from any other category (no tops, bottoms, or footwear)."
+                ),
+                'full': (
+                    "STYLING FOCUS MODE: 'Full outfit'.\n"
+                    "- Construct a stylish, cohesive combination matching the user's request by coordinating compatible tops, bottoms, footwear, and optional layers/accessories available in their inventory."
+                ),
+            }
+            active_mode_instruction = mode_instructions.get(mode, mode_instructions['full'])
+
             system_instruction = (
-                "You are Stylora, an expert personal fashion stylist. "
+                "You are Stylora, an expert personal fashion stylist.\n\n"
+                f"{active_mode_instruction}\n\n"
                 "CRITICAL GROUNDING RULE: You may ONLY recommend clothing items from the user's provided inventory. "
                 "NEVER invent items, reference external stores, or hallucinate item IDs. "
                 "Every single item in your recommendation MUST have an 'item_id' that exists in the provided inventory list.\n\n"
@@ -225,7 +379,6 @@ class AIService:
                 "- If the user asks for another option (e.g. 'Give me another option'): propose an alternative combination from their inventory.\n"
                 "- If the user asks an aesthetic or color theory question (e.g. 'Explain why these colors work together'): "
                 "maintain the items from the current outfit and provide an articulate, educational breakdown in 'styling_explanation'.\n"
-                "- Construct a stylish, cohesive combination matching the user's request, occasion, weather, or aesthetic.\n"
                 "- Provide a creative title and clear explanation."
             )
 
@@ -263,3 +416,153 @@ class AIService:
         except Exception as e:
             logger.error("AI service error during outfit generation: %s", str(e), exc_info=True)
             raise AIServiceError("Stylora is experiencing heavy demand or connectivity issues. Please try again.") from e
+
+    @classmethod
+    def derive_rule_based_season(cls, q_data: dict) -> ColorAnalysisResult:
+        """
+        Deterministic, offline rule engine that maps user questionnaire observations
+        (vein color, sun response, jewelry preference, visual contrast) to one of
+        the 12 seasonal palettes without requiring external AI calls.
+        """
+        warm_score = 0
+        cool_score = 0
+
+        vein = q_data.get('vein_color', '')
+        if vein == 'green_olive':
+            warm_score += 2
+        elif vein == 'blue_purple':
+            cool_score += 2
+        elif vein == 'blue_green':
+            warm_score += 1
+            cool_score += 1
+
+        sun = q_data.get('sun_reaction', '')
+        if sun == 'tans_easily':
+            warm_score += 2
+        elif sun == 'burns_easily':
+            cool_score += 2
+        elif sun == 'burns_then_tans':
+            warm_score += 1
+            cool_score += 1
+
+        jewelry = q_data.get('jewelry', '')
+        if jewelry == 'gold':
+            warm_score += 2
+        elif jewelry == 'silver':
+            cool_score += 2
+        elif jewelry == 'both':
+            warm_score += 1
+            cool_score += 1
+
+        contrast = q_data.get('contrast', 'medium')
+        pref_palette = q_data.get('preferred_palette', 'earthy')
+
+        is_warm = warm_score >= cool_score
+
+        if is_warm:
+            if contrast == 'high':
+                season_key = 'clear_spring' if pref_palette in ('vibrant', 'jewel') else 'deep_autumn'
+            elif contrast == 'soft':
+                season_key = 'light_spring' if pref_palette == 'pastels' else 'soft_autumn'
+            else:
+                season_key = 'warm_spring' if pref_palette in ('pastels', 'vibrant') else 'warm_autumn'
+        else:
+            if contrast == 'high':
+                season_key = 'clear_winter' if pref_palette == 'vibrant' else 'deep_winter'
+            elif contrast == 'soft':
+                season_key = 'light_summer' if pref_palette == 'pastels' else 'soft_summer'
+            else:
+                season_key = 'cool_winter' if pref_palette in ('jewel', 'monochrome') else 'cool_summer'
+
+        if season_key not in SEASON_PALETTES:
+            season_key = 'warm_autumn' if is_warm else 'cool_summer'
+
+        p = SEASON_PALETTES[season_key]
+        undertone_str = "Warm" if is_warm else ("Cool" if cool_score > warm_score else "Neutral-Leaning")
+        contrast_title = contrast.capitalize()
+
+        explanation = (
+            f"Based on your questionnaire observations (undertone tendency: {undertone_str}, visual contrast: {contrast_title}), "
+            f"your natural coloring is best complemented by the {p['name']} palette. "
+            f"{p['description']} These colors harmonize to give your complexion a radiant, balanced glow."
+        )
+
+        return ColorAnalysisResult(
+            season=season_key,
+            season_name=p['name'],
+            undertone=p['undertone'],
+            contrast_level=p['contrast'],
+            best_colors=p['best_colors'],
+            colors_to_avoid=p['colors_to_avoid'],
+            hex_palette=p['hex_palette'],
+            explanation=explanation
+        )
+
+    @classmethod
+    def analyze_personal_color(
+        cls,
+        questionnaire_data: dict,
+        image_bytes: Optional[bytes] = None,
+        mime_type: str = 'image/jpeg'
+    ) -> ColorAnalysisResult:
+        """
+        Performs personal seasonal color analysis.
+        If image_bytes is provided and GEMINI_API_KEY is configured, leverages Gemini 3.8 Flash
+        multimodal vision analysis to suggest one of the 12 seasons.
+        If image_bytes is omitted, or if Gemini encounters a timeout/API failure,
+        falls back gracefully and deterministically to the questionnaire rule engine.
+        """
+        api_key = cls.get_api_key()
+        if not image_bytes or not api_key:
+            return cls.derive_rule_based_season(questionnaire_data)
+
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=api_key)
+            q_summary = "\n".join([f"- {k}: {v}" for k, v in questionnaire_data.items() if v])
+
+            prompt = (
+                "You are an expert personal color analyst. Analyze this photograph along with "
+                "the user's self-reported undertone questionnaire answers to suggest their best seasonal color palette.\n\n"
+                f"USER QUESTIONNAIRE OBSERVATIONS:\n{q_summary}\n\n"
+                "TASK:\n"
+                "1. Determine their personal color season (must be exactly one of: warm_spring, light_spring, clear_spring, "
+                "cool_summer, light_summer, soft_summer, warm_autumn, deep_autumn, soft_autumn, cool_winter, deep_winter, clear_winter).\n"
+                "2. Identify undertone ('Warm', 'Cool', or 'Neutral') and visual contrast ('High', 'Medium', or 'Low/Soft').\n"
+                "3. Recommend 4 to 6 best flattering colors and 2 to 4 colors to avoid.\n"
+                "4. In 'explanation', provide an advisory, non-dogmatic breakdown emphasizing that color typing is guidance for styling confidence.\n"
+                "Return valid JSON adhering strictly to the schema."
+            )
+
+            response = client.models.generate_content(
+                model='gemini-3.8-flash',
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt,
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_json_schema=ColorAnalysisResult.model_json_schema(),
+                    temperature=0.2,
+                ),
+            )
+
+            if not response.text:
+                return cls.derive_rule_based_season(questionnaire_data)
+
+            result = ColorAnalysisResult.model_validate_json(response.text)
+            if result.season not in SEASON_PALETTES:
+                result.season = 'cool_summer' if 'cool' in result.undertone.lower() else 'warm_autumn'
+
+            if not result.hex_palette or len(result.hex_palette) < 3:
+                result.hex_palette = SEASON_PALETTES[result.season]['hex_palette']
+
+            logger.info("AI Color Analysis completed: %s (%s)", result.season_name, result.undertone)
+            return result
+
+        except Exception as e:
+            logger.warning("AI color analysis fallback to rule engine due to: %s", str(e))
+            return cls.derive_rule_based_season(questionnaire_data)
+

@@ -18,10 +18,19 @@
     </span>
   </div>
 
-  {% if needs_more_items %}
+  {% if is_empty_wardrobe %}
   <div class="alert alert-error" style="margin-bottom: 1.5rem;">
     <div>
-      <strong>Closet Notice:</strong> You currently have {{ wardrobe_count }} item(s) logged. Stylora needs at least 3 items (e.g. a top, a bottom, and shoes) to coordinate complete outfits.
+      <strong>Closet Notice:</strong> Your wardrobe is empty. Please upload some clothes before requesting styling advice.
+    </div>
+    <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary" style="margin-left: 1rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; min-height: 36px; white-space: nowrap;">
+      + Add Clothes
+    </a>
+  </div>
+  {% elif needs_more_items %}
+  <div class="alert" style="margin-bottom: 1.5rem; background: var(--tint-blue-pastel); border: 1px solid #BAE6FD; color: var(--primary-600);">
+    <div>
+      <strong>Closet Notice:</strong> You currently have {{ wardrobe_count }} item(s) logged. Full outfits require at least 3 items (top, bottom, and shoes), but you can already style individual categories like Tops or Shoes!
     </div>
     <a href="{% url 'wardrobe:item-create' %}" class="btn btn-primary" style="margin-left: 1rem; padding: 0.35rem 0.75rem; font-size: 0.85rem; min-height: 36px; white-space: nowrap;">
       + Add Clothes
@@ -94,6 +103,35 @@
       </div>
     </div>
 
+    <!-- Styling Focus Mode Selector -->
+    <div class="mode-selector-container" style="margin-bottom: 0.85rem; background: var(--bg-canvas); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.04em;">
+          🎯 Styling Focus
+        </span>
+        <span id="mode-helper-text" style="font-size: 0.8rem; color: var(--text-muted);">
+          Coordinates complete look (tops + bottoms + footwear)
+        </span>
+      </div>
+      <div class="mode-pills-container" role="radiogroup" aria-label="Styling Focus Mode" style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+        <button type="button" class="mode-pill active" data-mode="full" role="radio" aria-checked="true" {% if is_empty_wardrobe %}disabled{% endif %}>
+          ✨ Full Outfit
+        </button>
+        <button type="button" class="mode-pill" data-mode="tops" role="radio" aria-checked="false" {% if is_empty_wardrobe %}disabled{% endif %}>
+          👕 Tops Only
+        </button>
+        <button type="button" class="mode-pill" data-mode="bottoms" role="radio" aria-checked="false" {% if is_empty_wardrobe %}disabled{% endif %}>
+          👖 Bottoms Only
+        </button>
+        <button type="button" class="mode-pill" data-mode="shoes" role="radio" aria-checked="false" {% if is_empty_wardrobe %}disabled{% endif %}>
+          👟 Shoes Only
+        </button>
+        <button type="button" class="mode-pill" data-mode="accessories" role="radio" aria-checked="false" {% if is_empty_wardrobe %}disabled{% endif %}>
+          👜 Accessories Only
+        </button>
+      </div>
+    </div>
+
     <!-- Quick Presets -->
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
       <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); align-self: center;">Try asking:</span>
@@ -111,10 +149,11 @@
     <!-- Input Bar -->
     <form id="chat-form" style="display: flex; gap: 0.5rem; align-items: flex-end;">
       {% csrf_token %}
+      <input type="hidden" name="mode" id="selected-mode" value="full">
       <div style="flex: 1;">
-        <textarea id="prompt-input" class="form-control" rows="2" placeholder="Describe your occasion or outfit preference (e.g. 'Styling ideas with my denim jacket for a breezy evening')..." style="resize: none;" {% if needs_more_items %}disabled{% endif %}></textarea>
+        <textarea id="prompt-input" class="form-control" rows="2" placeholder="Describe your occasion or outfit preference (e.g. 'Styling ideas with my denim jacket for a breezy evening')..." style="resize: none;" {% if is_empty_wardrobe %}disabled{% endif %}></textarea>
       </div>
-      <button type="submit" id="send-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; min-height: 58px;" {% if needs_more_items %}disabled{% endif %}>
+      <button type="submit" id="send-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem; min-height: 58px;" {% if is_empty_wardrobe %}disabled{% endif %}>
         Style Me
       </button>
     </form>
@@ -127,6 +166,37 @@
   @keyframes pulse {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 0.85; }
+  }
+
+  .mode-pill {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.825rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    user-select: none;
+  }
+  .mode-pill:hover:not(:disabled) {
+    background: var(--tint-blue-pastel);
+    color: var(--primary-600);
+    border-color: #BAE6FD;
+  }
+  .mode-pill.active {
+    background: var(--primary-600);
+    color: #ffffff;
+    border-color: var(--primary-600);
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+  }
+  .mode-pill:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>
 
@@ -168,8 +238,45 @@
       });
     });
 
+    // Mode selection handling
+    var modePills = document.querySelectorAll('.mode-pill');
+    var selectedModeInput = document.getElementById('selected-mode');
+    var modeHelperText = document.getElementById('mode-helper-text');
+
+    var modeDescriptions = {
+      'full': 'Coordinates complete look (tops + bottoms + footwear)',
+      'tops': 'Recommends top(s) and shirt(s) matching your request only',
+      'bottoms': 'Recommends pants, skirts, or trousers matching your request only',
+      'shoes': 'Recommends footwear matching your request only',
+      'accessories': 'Recommends bags and accessories matching your request only'
+    };
+
+    modePills.forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        if (pill.disabled) return;
+        modePills.forEach(function(p) {
+          p.classList.remove('active');
+          p.setAttribute('aria-checked', 'false');
+        });
+        pill.classList.add('active');
+        pill.setAttribute('aria-checked', 'true');
+        var modeVal = pill.getAttribute('data-mode');
+        if (selectedModeInput) {
+          selectedModeInput.value = modeVal;
+        }
+        if (modeHelperText && modeDescriptions[modeVal]) {
+          modeHelperText.innerText = modeDescriptions[modeVal];
+        }
+      });
+    });
+
     function sendStylingRequest(postData, displayUserText) {
       if (!displayUserText) return;
+
+      // Ensure mode is included if not already set
+      if (!postData.mode && selectedModeInput) {
+        postData.mode = selectedModeInput.value;
+      }
 
       // 1. Render User Message immediately in DOM
       var userBubble = document.createElement('div');
@@ -226,7 +333,8 @@
         e.preventDefault();
         var promptText = promptInput.value.trim();
         if (!promptText) return;
-        sendStylingRequest({ 'prompt': promptText }, promptText);
+        var currentMode = selectedModeInput ? selectedModeInput.value : 'full';
+        sendStylingRequest({ 'prompt': promptText, 'mode': currentMode }, promptText);
       });
     }
 
