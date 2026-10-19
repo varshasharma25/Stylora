@@ -481,11 +481,18 @@ class AIService:
         undertone_str = "Warm" if is_warm else ("Cool" if cool_score > warm_score else "Neutral-Leaning")
         contrast_title = contrast.capitalize()
 
-        explanation = (
-            f"Based on your questionnaire observations (undertone tendency: {undertone_str}, visual contrast: {contrast_title}), "
-            f"your natural coloring is best complemented by the {p['name']} palette. "
-            f"{p['description']} These colors harmonize to give your complexion a radiant, balanced glow."
-        )
+        if q_data and any(q_data.values()):
+            explanation = (
+                f"Based on your undertone tendency ({undertone_str}) and visual contrast ({contrast_title}), "
+                f"your natural coloring is best complemented by the {p['name']} palette. "
+                f"{p['description']} These colors harmonize to give your complexion a radiant, balanced glow."
+            )
+        else:
+            explanation = (
+                f"Based on your photo analysis ({undertone_str} undertone, {contrast_title} contrast), "
+                f"your natural coloring is best complemented by the {p['name']} palette. "
+                f"{p['description']} These colors harmonize to give your complexion a radiant, balanced glow."
+            )
 
         return ColorAnalysisResult(
             season=season_key,
@@ -501,17 +508,18 @@ class AIService:
     @classmethod
     def analyze_personal_color(
         cls,
-        questionnaire_data: dict,
+        questionnaire_data: Optional[dict] = None,
         image_bytes: Optional[bytes] = None,
         mime_type: str = 'image/jpeg'
     ) -> ColorAnalysisResult:
         """
         Performs personal seasonal color analysis.
         If image_bytes is provided and GEMINI_API_KEY is configured, leverages Gemini 3.8 Flash
-        multimodal vision analysis to suggest one of the 12 seasons.
-        If image_bytes is omitted, or if Gemini encounters a timeout/API failure,
-        falls back gracefully and deterministically to the questionnaire rule engine.
+        multimodal vision analysis to suggest one of the 12 seasons based on the uploaded photo.
+        If Gemini encounters a timeout/API failure or API key is absent,
+        falls back gracefully and deterministically to the color analysis rule engine.
         """
+        questionnaire_data = questionnaire_data or {}
         api_key = cls.get_api_key()
         if not image_bytes or not api_key:
             return cls.derive_rule_based_season(questionnaire_data)
@@ -521,18 +529,23 @@ class AIService:
             from google.genai import types
 
             client = genai.Client(api_key=api_key)
-            q_summary = "\n".join([f"- {k}: {v}" for k, v in questionnaire_data.items() if v])
+            q_summary = ""
+            if questionnaire_data and any(questionnaire_data.values()):
+                items = [f"- {k}: {v}" for k, v in questionnaire_data.items() if v]
+                if items:
+                    q_summary = f"USER OBSERVATIONS:\n" + "\n".join(items) + "\n\n"
 
             prompt = (
-                "You are an expert personal color analyst. Analyze this photograph along with "
-                "the user's self-reported undertone questionnaire answers to suggest their best seasonal color palette.\n\n"
-                f"USER QUESTIONNAIRE OBSERVATIONS:\n{q_summary}\n\n"
+                "You are an expert personal color analyst. Analyze this photograph "
+                "to determine the user's best personal seasonal color palette.\n\n"
+                f"{q_summary}"
                 "TASK:\n"
-                "1. Determine their personal color season (must be exactly one of: warm_spring, light_spring, clear_spring, "
+                "1. Inspect the skin undertone, natural hair color, eye depth, and overall contrast in this photo.\n"
+                "2. Determine their personal color season (must be exactly one of: warm_spring, light_spring, clear_spring, "
                 "cool_summer, light_summer, soft_summer, warm_autumn, deep_autumn, soft_autumn, cool_winter, deep_winter, clear_winter).\n"
-                "2. Identify undertone ('Warm', 'Cool', or 'Neutral') and visual contrast ('High', 'Medium', or 'Low/Soft').\n"
-                "3. Recommend 4 to 6 best flattering colors and 2 to 4 colors to avoid.\n"
-                "4. In 'explanation', provide an advisory, non-dogmatic breakdown emphasizing that color typing is guidance for styling confidence.\n"
+                "3. Identify undertone ('Warm', 'Cool', or 'Neutral') and visual contrast ('High', 'Medium', or 'Low/Soft').\n"
+                "4. Recommend 4 to 6 best flattering colors and 2 to 4 colors to avoid.\n"
+                "5. In 'explanation', provide an advisory, non-dogmatic breakdown explaining why this seasonal palette illuminates their features.\n"
                 "Return valid JSON adhering strictly to the schema."
             )
 

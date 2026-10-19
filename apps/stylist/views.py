@@ -302,11 +302,11 @@ class FindMyColourView(LoginRequiredMixin, View):
             })
 
         q_data = {
-            'vein_color': form.cleaned_data['vein_color'],
-            'sun_reaction': form.cleaned_data['sun_reaction'],
-            'jewelry': form.cleaned_data['jewelry'],
-            'contrast': form.cleaned_data['contrast'],
-            'preferred_palette': form.cleaned_data['preferred_palette'],
+            'vein_color': form.cleaned_data.get('vein_color', ''),
+            'sun_reaction': form.cleaned_data.get('sun_reaction', ''),
+            'jewelry': form.cleaned_data.get('jewelry', ''),
+            'contrast': form.cleaned_data.get('contrast', ''),
+            'preferred_palette': form.cleaned_data.get('preferred_palette', ''),
         }
 
         uploaded_photo = form.cleaned_data.get('photo')

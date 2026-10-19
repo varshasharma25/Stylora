@@ -19,6 +19,7 @@ class ColorAnalysisQuestionnaireForm(forms.Form):
         widget=forms.RadioSelect(attrs={'class': 'custom-radio'}),
         label="1. Look at the veins on the inside of your wrist in natural daylight:",
         initial='green_olive',
+        required=False,
     )
 
     SUN_CHOICES = [
@@ -31,6 +32,7 @@ class ColorAnalysisQuestionnaireForm(forms.Form):
         widget=forms.RadioSelect(attrs={'class': 'custom-radio'}),
         label="2. How does your skin typically respond to prolonged sunlight?",
         initial='tans_easily',
+        required=False,
     )
 
     JEWELRY_CHOICES = [
@@ -43,6 +45,7 @@ class ColorAnalysisQuestionnaireForm(forms.Form):
         widget=forms.RadioSelect(attrs={'class': 'custom-radio'}),
         label="3. Which metal tone feels most harmonious against your skin?",
         initial='gold',
+        required=False,
     )
 
     CONTRAST_CHOICES = [
@@ -55,6 +58,7 @@ class ColorAnalysisQuestionnaireForm(forms.Form):
         widget=forms.RadioSelect(attrs={'class': 'custom-radio'}),
         label="4. How would you describe the contrast between your hair, eyes, and skin?",
         initial='medium',
+        required=False,
     )
 
     PALETTE_CHOICES = [
@@ -69,15 +73,18 @@ class ColorAnalysisQuestionnaireForm(forms.Form):
         widget=forms.RadioSelect(attrs={'class': 'custom-radio'}),
         label="5. Which color family makes you feel most confident when wearing it?",
         initial='earthy',
+        required=False,
     )
 
     photo = forms.FileField(
-        required=False,
-        label="Optional Photo Upload (Face or Wrist in natural daylight)",
-        help_text="Upload a JPEG, PNG, or WebP photo (max 10MB). Photos are processed purely in-memory and discarded immediately.",
+        required=True,
+        label="Daylight Photo (Face or Wrist in natural lighting)",
+        help_text="Upload a clear JPEG, PNG, or WebP photo (max 10MB) in natural daylight.",
+        error_messages={'required': 'Please upload a photo in natural daylight to analyze your colour palette.'},
         widget=forms.FileInput(attrs={
             'class': 'form-control',
             'accept': 'image/jpeg,image/png,image/webp',
+            'id': 'color-photo-input',
         })
     )
 

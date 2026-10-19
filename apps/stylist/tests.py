@@ -607,20 +607,20 @@ class FindMyColourTests(TestCase):
         resp_save = anon_client.post(self.save_url, {})
         self.assertRedirects(resp_save, f"{reverse('accounts:login')}?next={self.save_url}")
 
-    def test_find_my_colour_get_renders_questionnaire(self):
+    def test_find_my_colour_get_renders_photo_upload(self):
         resp = self.client_a.get(self.analysis_url)
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Find My Colour")
-        self.assertContains(resp, "Look at the veins")
-        self.assertContains(resp, "Privacy Assurance")
-        self.assertContains(resp, "Optional Photo Upload")
+        self.assertContains(resp, "Upload Daylight Photo")
+        self.assertNotContains(resp, "Look at the veins")
+        self.assertNotContains(resp, "Privacy Assurance &amp; Ephemeral Processing")
 
-    def test_questionnaire_only_rule_based_analysis_success(self):
-        # Submitting without photo should not invoke Gemini Client
-        with patch('google.genai.Client') as mock_client:
-            resp = self.client_a.post(self.analysis_url, data=self.valid_q_data)
+    def test_photo_upload_rule_based_analysis_success(self):
+        # Submitting photo without Gemini API key configured falls back gracefully to rule-based palette
+        photo = create_test_image(format='JPEG')
+        with patch.object(AIService, 'get_api_key', return_value=''):
+            resp = self.client_a.post(self.analysis_url, data={'photo': photo})
             self.assertEqual(resp.status_code, 200)
-            mock_client.assert_not_called()
 
         self.assertContains(resp, "Warm Autumn")
         self.assertContains(resp, "Core Harmony Swatches")
@@ -724,10 +724,12 @@ class FindMyColourTests(TestCase):
         self.assertTrue(profile.color_analysis_consent)
 
     def test_results_contain_uncertainty_language(self):
-        resp = self.client_a.post(self.analysis_url, data=self.valid_q_data)
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, "advisory styling guideline")
-        self.assertContains(resp, "not an exact or rigid clinical diagnosis")
+        with patch.object(AIService, 'get_api_key', return_value=''):
+            photo = create_test_image(format='JPEG')
+            resp = self.client_a.post(self.analysis_url, data={'photo': photo})
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "advisory styling guideline")
+            self.assertContains(resp, "not an exact or rigid clinical diagnosis")
 
     def test_find_my_colour_user_isolation(self):
         # User A saves their palette with consent
